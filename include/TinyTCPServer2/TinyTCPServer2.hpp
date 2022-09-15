@@ -6,6 +6,10 @@
 #define LENGTH_PER_SEND 2048 //每次向内核发送缓冲区拷贝多少字节
 #endif // LENGTH_PER_SEND
 
+#if !defined(EPOLL_SIZE)
+#define EPOLL_SIZE 1024 //epoll监听树结点上限
+#endif // EPOLL_SIZE
+
 #if !defined(_TinyTCPServer2_hpp)
 #define _TinyTCPServer2_hpp
 

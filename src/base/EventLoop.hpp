@@ -5,6 +5,8 @@
 #include <atomic>
 #include <vector>
 #include <memory>
+#include <queue>
+#include <mutex>
 
 namespace TTCPS2
 {
@@ -18,7 +20,17 @@ namespace TTCPS2
     std::atomic_bool running;
 
     /// @brief wait()用来承接active的事件，并交还给run()
-    std::vector<Event> theActive;
+    std::vector<std::shared_ptr<Event>> theActives;
+
+    /**     * @brief 定时任务     */
+    std::priority_queue<TimerTask> ttq;
+    std::mutex m_ttq;
+
+    /**     * @brief 队列任务     */
+    std::queue<std::function<void ()>> ptq;
+    std::mutex m_ptq;
+
+    int eventFD;
 
   // 核心部分
 
@@ -27,12 +39,12 @@ namespace TTCPS2
     /// @brief 将事件newE加入监听
     /// @param newE 
     /// @return 成功被添加的个数
-    virtual int addEvent(Event const& newE);
+    virtual int addEvent(Event const& newE) = 0;
 
     /// @brief 终止对满足条件的事件的监听
     /// @param filter 筛选条件，遇到满足条件的参数就返回true
     /// @return 成功被移除的个数，或-1表示出错
-    virtual int removeEvent(std::function<bool (Event const&)> filter);
+    virtual int removeEvent(std::function<bool (Event const&)> filter) = 0;
   
     /// @return -1表示出错
     int run();
@@ -45,11 +57,11 @@ namespace TTCPS2
 
     /// @brief run()等待事件发生，通过theActive传回活跃事件
     /// @return 活跃事件的数量
-    virtual int wait();
+    virtual int wait() = 0;
 
     /// @brief run()把一个事件分发给正确的回调函数
     /// @return -1表示出错
-    virtual int dispatch(Event const& toHandle);
+    virtual int dispatch(Event const& toHandle) = 0;
     
   // 核心部分/
 
@@ -108,6 +120,11 @@ namespace TTCPS2
   // 唤醒机制/
 
   public:
+
+    /**
+     * @brief 告知当前EventLoop不要再循环
+     * @return int 
+     */
     int shutdown();
     
   };
