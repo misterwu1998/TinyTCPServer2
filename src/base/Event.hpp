@@ -13,6 +13,8 @@ namespace TTCPS2
      * @brief Get the information.
      * @return std::string const      */
     virtual std::string const getInfo() const = 0;
+
+    virtual int getFD() const = 0;
   };
   
 } // namespace TTCPS2

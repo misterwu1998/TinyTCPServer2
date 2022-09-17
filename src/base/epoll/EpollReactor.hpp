@@ -1,6 +1,7 @@
 #if !defined(_EpollReactor_hpp)
 #define _EpollReactor_hpp
 
+#include <unordered_set>
 #include "../EventLoop.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 
@@ -10,8 +11,9 @@ namespace TTCPS2
   {
   protected:
     int epollFD;
-    // int epollSize;由宏EPOLL_SIZE替代
-    std::atomic_uint32_t nEvents;
+    
+    std::unordered_set<epoll_event> events;
+    std::mutex m_events;
 
   public:
 

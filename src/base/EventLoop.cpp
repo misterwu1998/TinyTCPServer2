@@ -22,7 +22,7 @@ namespace TTCPS2
         TTCPS2_LOGGER.warn(std::string("EventLoop::run(): nActive<0; errno means: ") + strerror(errno));
       }
       for(auto const& anActive : theActives){
-        if(-1 == this->dispatch(*anActive)){
+        if(-1 == this->_skipWakeup(*anActive)){
           TTCPS2_LOGGER.warn("EventLoop::run(): -1 == this->dispatch(*anActive); the info of anActive: " + anActive->getInfo());
         }
       }
@@ -65,6 +65,14 @@ namespace TTCPS2
     }else{
       return 1000*(next-now);//转成微秒
     }
+  }
+
+  int EventLoop::_skipWakeup(Event const& toHandle){
+    if(eventFD==toHandle.getFD()){
+      TTCPS2_LOGGER.info("EventLoop::_skipWakeup(): info of wake-up FD is " + toHandle.getInfo());
+      return 0;
+    }
+    return dispatch(toHandle);
   }
 
   int EventLoop::addTimerTask(TimerTask const& tt){

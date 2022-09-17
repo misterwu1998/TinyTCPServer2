@@ -58,6 +58,12 @@ namespace TTCPS2
     /// @brief run()等待事件发生，通过theActive传回活跃事件
     /// @return 活跃事件的数量
     virtual int wait() = 0;
+    
+  private:
+
+    int _skipWakeup(Event const& toHandle);
+
+  protected:
 
     /// @brief run()把一个事件分发给正确的回调函数
     /// @return -1表示出错

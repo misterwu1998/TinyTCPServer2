@@ -10,4 +10,9 @@ namespace TTCPS2
     epollEvent.events = events;
     epollEvent.data.fd = fd;
   }
+
+  int EpollEvent::getFD() const{
+    return epollEvent.data.fd;
+  }
+
 } // namespace TTCPS
