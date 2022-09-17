@@ -11,14 +11,16 @@ namespace TTCPS2
   protected:
     int epollFD;
     // int epollSize;由宏EPOLL_SIZE替代
+    std::atomic_uint32_t nEvents;
 
   public:
 
     EpollReactor();
+    virtual ~EpollReactor();
     
     /// @brief 将事件newE加入监听
     /// @param newE 
-    /// @return 成功被添加的个数
+    /// @return 成功被添加的个数；或-1表示出错
     virtual int addEvent(Event const& newE);
 
     /// @brief 终止对满足条件的事件的监听

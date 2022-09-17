@@ -7,7 +7,7 @@
 #endif // LENGTH_PER_SEND
 
 #if !defined(EPOLL_SIZE)
-#define EPOLL_SIZE 1024 //epoll监听树结点上限
+#define EPOLL_SIZE 128 //epoll监听树结点上限
 #endif // EPOLL_SIZE
 
 #if !defined(_TinyTCPServer2_hpp)

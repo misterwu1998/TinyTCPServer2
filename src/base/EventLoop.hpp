@@ -38,7 +38,7 @@ namespace TTCPS2
 
     /// @brief 将事件newE加入监听
     /// @param newE 
-    /// @return 成功被添加的个数
+    /// @return 成功被添加的个数；或-1表示出错
     virtual int addEvent(Event const& newE) = 0;
 
     /// @brief 终止对满足条件的事件的监听
