@@ -34,7 +34,10 @@ namespace TTCPS2
 
   int EpollReactor::addEvent(Event const& newE){
     TTCPS2_LOGGER.trace("EpollReactor::addEvent(): start");
-    epoll_event ee = (dynamic_cast<EpollEvent const&>(newE)).epollEvent;
+    epoll_event ee = epoll_event{
+        .events = (dynamic_cast<EpollEvent const&>(newE)).events
+      , .data.fd = (dynamic_cast<EpollEvent const&>(newE)).fd //union成员的初始化要排在后面
+    };
     {
       LG lg(m_events);
       if(events.size()>=EPOLL_SIZE){
@@ -45,7 +48,7 @@ namespace TTCPS2
         TTCPS2_LOGGER.warn("EpollReactor::addEvent(): epoll_ctl(); errno means: " + std::string(strerror(errno)));
         return -1;
       }
-      events.insert(ee);
+      events.insert(dynamic_cast<EpollEvent const&>(newE));
     }
     TTCPS2_LOGGER.trace("EpollReactor::addEvent(): end");
     return 1;
@@ -54,15 +57,18 @@ namespace TTCPS2
   int EpollReactor::removeEvent(std::function<bool (Event const&)> filter){
     TTCPS2_LOGGER.trace("EpollReactor::removeEvent(): start");
     uint32_t count = 0;
-    EpollEvent temp;
-    std::vector<epoll_event> toDel;
+    epoll_event temp;
+    std::vector<EpollEvent> toDel;
     {
       LG lg(m_events);
       for(auto& iter : events){
-        temp.epollEvent = iter;
-        if(filter(temp)){//符合条件
-          if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.data.fd, &(temp.epollEvent))){
-            TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + temp.getInfo());
+        if(filter(iter)){//符合条件
+          temp = epoll_event{
+              .events = iter.events
+            , .data.fd = iter.fd
+          };
+          if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp)){
+            TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + iter.getInfo());
             return -1;
           }
           toDel.emplace_back(iter);
@@ -105,9 +111,10 @@ namespace TTCPS2
 
   int EpollReactor::dispatch(Event const& toHandle){
     // 此处情况的分类和顺序参考muduo
-    epoll_event ee = dynamic_cast<EpollEvent const&>(toHandle).epollEvent;
-    if((ee.events & EPOLLHUP) && !(ee.events & EPOLLIN)){
-      TTCPS2_LOGGER.warn("EpollReactor::dispatch(): EPOLLHUP")
+    auto& ee = dynamic_cast<EpollEvent const&>(toHandle);
+    if((ee.events & EPOLLHUP) && !(ee.events & EPOLLIN)){}
+    // if(ee.events & 0X020){} POLLNVAL
+    if(ee.events & EPOLLERR){
       
     }
   }

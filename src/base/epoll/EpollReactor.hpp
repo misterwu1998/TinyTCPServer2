@@ -12,7 +12,7 @@ namespace TTCPS2
   protected:
     int epollFD;
     
-    std::unordered_set<epoll_event> events;
+    std::unordered_set<EpollEvent> events;
     std::mutex m_events;
 
   public:

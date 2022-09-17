@@ -3,16 +3,13 @@
 namespace TTCPS2
 {
   std::string const EpollEvent::getInfo() const{
-    return "FD: " + std::to_string(epollEvent.data.fd) + ";events: " + std::to_string(epollEvent.events);
+    return "FD: " + std::to_string(fd) + ";events: " + std::to_string(events);
   }
 
-  EpollEvent::EpollEvent(uint32_t events, int fd){
-    epollEvent.events = events;
-    epollEvent.data.fd = fd;
-  }
+  EpollEvent::EpollEvent(uint32_t events, int fd): events(events), fd(fd){  }
 
   int EpollEvent::getFD() const{
-    return epollEvent.data.fd;
+    return fd;
   }
 
 } // namespace TTCPS
