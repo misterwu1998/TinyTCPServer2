@@ -1,18 +1,20 @@
 #if !defined(_EpollReactor_hpp)
 #define _EpollReactor_hpp
 
-#include <unordered_set>
+// #include <unordered_set> unordered_set需要提供hash、allocator
+#include <set>
 #include "../EventLoop.hpp"
-#include "TinyTCPServer2/TinyTCPServer2.hpp"
 
 namespace TTCPS2
 {
+  class EpollEvent;
+
   class EpollReactor : virtual public EventLoop
   {
   protected:
     int epollFD;
     
-    std::unordered_set<EpollEvent> events;
+    std::set<EpollEvent> events;
     std::mutex m_events;
 
   public:
@@ -39,6 +41,27 @@ namespace TTCPS2
     /// @brief run()把一个事件分发给正确的回调函数
     /// @return -1表示出错
     virtual int dispatch(Event const& toHandle);
+
+  // EpollReactor::
+
+  protected:
+
+    /// @brief 应对EPOLLERR
+    /// 需要重写
+    /// @return -1表示出错
+    virtual int _errorCallback(){return -1;}
+    
+    /// @brief 应对可读事件
+    /// 需要重写
+    /// @return -1表示出错
+    virtual int _readCallback(){return 0;}
+    
+    /// @brief 应对可写事件
+    /// 需要重写
+    /// @return -1表示出错
+    virtual int _writeCallback(){return 0;}
+
+  // EpollReactor:: //
   
   };
   

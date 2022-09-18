@@ -14,16 +14,16 @@
 namespace TTCPS2
 {
   int EventLoop::run(){
-    TTCPS2_LOGGER.trace("EventLoop::run(): start running...");
+    // TTCPS2_LOGGER.trace("EventLoop::run(): start running...");
     while(running){
       theActives.clear();
-      int nActive = wait();//theActive.size()
+      int nActive = wait();//==theActive.size()
       if(nActive<0){
         TTCPS2_LOGGER.warn(std::string("EventLoop::run(): nActive<0; errno means: ") + strerror(errno));
       }
       for(auto const& anActive : theActives){
-        if(-1 == this->_skipWakeup(*anActive)){
-          TTCPS2_LOGGER.warn("EventLoop::run(): -1 == this->dispatch(*anActive); the info of anActive: " + anActive->getInfo());
+        if(-1 == this->_skipWakeupAndDispatch(*anActive)){
+          TTCPS2_LOGGER.warn("EventLoop::run(): -1 == this->_skipWakeupAndDispatch(*anActive); the info of anActive: " + anActive->getInfo());
         }
       }
       if(-1==doTimerTasks()){
@@ -33,7 +33,7 @@ namespace TTCPS2
         TTCPS2_LOGGER.warn("EventLoop::run(): -1==doPendingTasks()");
       }
     }
-    TTCPS2_LOGGER.trace("EventLoop::run(): stop looping.");
+    // TTCPS2_LOGGER.trace("EventLoop::run(): stop looping.");
     return 0;
   }
 
@@ -51,6 +51,7 @@ namespace TTCPS2
     {//只要有队列任务，就完全不等待
       LG lg(m_ptq);
       if(!ptq.empty()){
+        TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return 0");
         return 0;
       }
     }
@@ -58,20 +59,28 @@ namespace TTCPS2
     int64_t next;
     {
       LG lg(m_ttq);
+      if(ttq.empty()){//队列任务和定时任务一个都没有
+        TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return -1");
+        return -1;//永久
+      }
       next = ttq.top().nextTimestamp;
     }
     if(next<=now){//已经到时了
+      TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return 0");
       return 0;//完全不等
     }else{
-      return 1000*(next-now);//转成微秒
+      int64_t toReturn = 1000*(next-now);//转成微秒
+      TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return " + std::to_string(toReturn));
+      return toReturn;
     }
   }
 
-  int EventLoop::_skipWakeup(Event const& toHandle){
+  int EventLoop::_skipWakeupAndDispatch(Event const& toHandle){
     if(eventFD==toHandle.getFD()){
-      TTCPS2_LOGGER.info("EventLoop::_skipWakeup(): info of wake-up FD is " + toHandle.getInfo());
+      TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): info of wake-up FD is " + toHandle.getInfo());
       return 0;
     }
+    TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): the event should be dispatched.");
     return dispatch(toHandle);
   }
 
@@ -133,7 +142,7 @@ namespace TTCPS2
         }
       }
     }
-    TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): end");
+    TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): number of tasks done is " + std::to_string(count));
     return count;
   }
 
@@ -178,7 +187,7 @@ namespace TTCPS2
       count++;
       temp.pop();
     }
-    TTCPS2_LOGGER.trace("EventLoop::doPendingTasks(): end");
+    TTCPS2_LOGGER.trace("EventLoop::doPendingTasks(): number of tasks done is " + std::to_string(count));
     return count;
   }
 

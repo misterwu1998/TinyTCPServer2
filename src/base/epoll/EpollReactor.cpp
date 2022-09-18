@@ -3,6 +3,7 @@
 #include <sys/eventfd.h>
 #include "TinyTCPServer2/Logger.hpp"
 #include "./EpollEvent.hpp"
+#include "TinyTCPServer2/TinyTCPServer2.hpp"
 
 #define LG std::lock_guard<std::mutex>
 
@@ -115,14 +116,38 @@ namespace TTCPS2
     if((ee.events & EPOLLHUP) && !(ee.events & EPOLLIN)){}
     // if(ee.events & 0X020){} POLLNVAL
     if(ee.events & EPOLLERR){
-      
+      TTCPS2_LOGGER.info("EpollReactor::dispatch(): EPOLLERR!");
+      if(0>_errorCallback()){
+        TTCPS2_LOGGER.warn("EpollReactor::dispatch(): fail in handling EPOLLERR. Info of the event: " + ee.getInfo());
+        // return -1;
+      }else{
+        TTCPS2_LOGGER.info("EpollReactor::dispatch(): EPOLLERR been handled.");
+      }
     }
+    if(ee.events & (EPOLLIN|EPOLLPRI|EPOLLRDHUP)){
+      if(0>_readCallback()){
+        TTCPS2_LOGGER.warn("EpollReactor::dispatch(): 0>_readCallback(); Info of the event: " + ee.getInfo());
+      }else{
+        TTCPS2_LOGGER.trace("EpollReactor::dispatch(): _readCallback() done.");
+      }
+    }
+    if(ee.events & EPOLLOUT){
+      if(0>_writeCallback()){
+        TTCPS2_LOGGER.warn("EpollReactor::dispatch(): 0>_writeCallback(); Info of the event: " + ee.getInfo());
+      }else{
+        TTCPS2_LOGGER.trace("EpollReactor::dispatch(): _writeCallback() done.");
+      }
+    }
+    return 0;
   }
 
   EpollReactor::~EpollReactor(){
-    TTCPS2_LOGGER.trace("EpollReactor::~EpollReactor(): start");
-    close(epollFD);
-    close(eventFD);
+    if(0>close(epollFD)){
+      TTCPS2_LOGGER.warn("EpollReactor::~EpollReactor(): 0>close(epollFD)");
+    }
+    if(0>close(eventFD)){
+      TTCPS2_LOGGER.warn("EpollReactor::~EpollReactor(): 0>close(eventFD)");
+    }
     TTCPS2_LOGGER.trace("EpollReactor::~EpollReactor(): end");
   }
 

@@ -56,12 +56,13 @@ namespace TTCPS2
     virtual int64_t getTimeout();
 
     /// @brief run()等待事件发生，通过theActive传回活跃事件
+    /// 可以通过getTimeout()计算等待时限，也可以自行决定
     /// @return 活跃事件的数量
     virtual int wait() = 0;
     
   private:
 
-    int _skipWakeup(Event const& toHandle);
+    int _skipWakeupAndDispatch(Event const& toHandle);
 
   protected:
 
