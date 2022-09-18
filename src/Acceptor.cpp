@@ -6,6 +6,8 @@
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 #include "base/epoll/EpollEvent.hpp"
+#include "TinyTCPServer2/TCPConnectionFactory.hpp"
+#include "TinyTCPServer2/TCPConnection.hpp"
 
 namespace TTCPS2
 {
@@ -45,10 +47,23 @@ namespace TTCPS2
 
   }
 
-  int Acceptor::_readCallback(){
+  int Acceptor::_readCallback(Event const& toHandle){
     TTCPS2_LOGGER.trace("Acceptor::_readCallback()");
 
-    auto reactors = server->netIOReactors;
+    // accept
+    sockaddr_in addr;
+    socklen_t addrLen;
+    int newClient = ::accept(/*除了wakeupFD, Acceptor只监听这个*/listenFD/*toHandle.getFD()*/, (sockaddr*)&addr, &addrLen);
+    if(0>newClient){
+      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): fail to accept new client!");
+      return -1;
+    }
+
+    // 新TCPConnection对象
+    auto& reactors = server->netIOReactors;
+    auto& factory = server->factory;
+    auto newConn = factory->operator()(reactors[(roundRobin++) % reactors.size()], newClient);
+
   }
 
   Acceptor::~Acceptor(){

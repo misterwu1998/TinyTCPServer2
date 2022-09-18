@@ -49,17 +49,17 @@ namespace TTCPS2
     /// @brief 应对EPOLLERR
     /// 需要重写
     /// @return -1表示出错
-    virtual int _errorCallback(){return -1;}
+    virtual int _errorCallback(Event const& toHandle){return -1;}
     
     /// @brief 应对可读事件
     /// 需要重写
     /// @return -1表示出错
-    virtual int _readCallback(){return 0;}
+    virtual int _readCallback(Event const& toHandle){return 0;}
     
     /// @brief 应对可写事件
     /// 需要重写
     /// @return -1表示出错
-    virtual int _writeCallback(){return 0;}
+    virtual int _writeCallback(Event const& toHandle){return 0;}
 
   // EpollReactor:: //
   

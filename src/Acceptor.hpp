@@ -6,6 +6,7 @@
 namespace TTCPS2
 {
   class TinyTCPServer2;
+  class Event;
 
   class Acceptor : virtual public EpollReactor
   {
@@ -28,7 +29,7 @@ namespace TTCPS2
 
     /// @brief 应对可读事件
     /// @return -1表示出错
-    virtual int _readCallback();
+    virtual int _readCallback(Event const& toHandle);
     
     // EpollReactor:: //
 

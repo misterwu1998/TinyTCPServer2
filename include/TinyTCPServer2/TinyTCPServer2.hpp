@@ -38,13 +38,13 @@ namespace TTCPS2
     unsigned short port;
     unsigned int listenSize;
     unsigned int nNetIOReactors;
-    std::shared_ptr<TCPConnectionFactory> const& factory;
+    std::shared_ptr<TCPConnectionFactory> factory;
     ThreadPool* const tp;
     std::shared_ptr<spdlog::logger> logger;
 
     std::shared_ptr<Acceptor> acceptor;
-    std::shared_ptr<std::vector<std::shared_ptr<NetIOReactor>>> netIOReactors;
-    std::shared_ptr<std::vector<std::thread>> oneLoopPerThread;
+    std::vector<std::shared_ptr<NetIOReactor>> netIOReactors;
+    std::vector<std::thread> oneLoopPerThread;//这个也不必套多一层shared_ptr
 
     TinyTCPServer2(
         const char* ip
