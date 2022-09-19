@@ -21,11 +21,14 @@
 #include <memory>
 #include <vector>
 #include <thread>
+#include <mutex>
+#include <unordered_map>
 #include "spdlog/spdlog.h"
 
 namespace TTCPS2
 {
   class TCPConnectionFactory;
+  class TCPConnection;
   class ThreadPool;
   class Acceptor;
   class NetIOReactor;
@@ -42,9 +45,17 @@ namespace TTCPS2
     ThreadPool* const tp;
     std::shared_ptr<spdlog::logger> logger;
 
+    // 常量
+
     std::shared_ptr<Acceptor> acceptor;
     std::vector<std::shared_ptr<NetIOReactor>> netIOReactors;
-    std::vector<std::thread> oneLoopPerThread;//这个也不必套多一层shared_ptr
+    std::vector<std::thread> oneLoopPerThread;
+
+    // 常量 //
+
+    /// @brief {socket文件描述符: TCPConnection对象}
+    std::unordered_map<int, std::shared_ptr<TCPConnection>> connections;
+    std::mutex m_connections;
 
     TinyTCPServer2(
         const char* ip

@@ -9,6 +9,8 @@
 #include "TinyTCPServer2/TCPConnectionFactory.hpp"
 #include "TinyTCPServer2/TCPConnection.hpp"
 
+#define LG std::lock_guard<std::mutex>
+
 namespace TTCPS2
 {
   Acceptor::Acceptor(
@@ -62,7 +64,21 @@ namespace TTCPS2
     // 新TCPConnection对象
     auto& reactors = server->netIOReactors;
     auto& factory = server->factory;
-    auto newConn = factory->operator()(reactors[(roundRobin++) % reactors.size()], newClient);
+    auto newConn = factory->operator()(reactors[roundRobin % reactors.size()].get(), newClient);
+    TTCPS2_LOGGER.info("Acceptor::_readCallback(): client socket {0} will be listened by reactor {1}.", newClient,roundRobin);
+
+    // 加入连接集合
+    auto& connections = server->connections;
+    {
+      LG lg(server->m_connections);
+      connections.insert({newClient,newConn});
+    }
+
+    // 开始监听 TODO[202209192330]
+    newConn->netIOReactor->
+
+    ++roundRobin;
+    return 1;
 
   }
 

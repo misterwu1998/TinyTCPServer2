@@ -6,22 +6,26 @@
 namespace TTCPS2
 {
   class NetIOReactor;
+  class Acceptor;
   class TimerTask;
 
   class TCPConnection
   {
   private:
+    friend class Acceptor;
     friend class NetIOReactor;
+    NetIOReactor* netIOReactor;
 
-  private:
+  public:
+    TCPConnection(
+        NetIOReactor* netIOReactor
+      , int clientSocket
+    );
 
     /// @brief 由NetIOReactor线程调用，尽可能从内核缓冲区读取length字节数据
     /// @param length 
     /// @return 实际读取的数据量 /字节; 或-1表示客户端不再能正常通信
     int readFromSocket(int length);
-
-  public:
-    TCPConnection();
 
     /// @brief 线程安全地查看当前有多少数据未处理 /字节
     /// @return -1表示异常

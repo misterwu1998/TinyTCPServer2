@@ -7,18 +7,22 @@ namespace TTCPS2
 {
   class TCPConnection;
   class NetIOReactor;
+  class Acceptor;
 
   /// @brief To be inherited.
   class TCPConnectionFactory
   {
-  public:
+  protected:
+  
+    friend class Acceptor; 
+    //Acceptor需要向factory索取新TCPConnection
 
     /// @brief 
-    /// @param netIOReactor 是哪个网络IO反应堆需要新TCPConnection对象
+    /// @param netIOReactor 新TCPConnection对象会被分发到哪个网络IO反应堆
     /// @param clientSocket 与客户端通信的socket
     /// @return 
     virtual std::shared_ptr<TCPConnection> operator() (
-        std::shared_ptr<NetIOReactor> netIOReactor
+        NetIOReactor* netIOReactor
       , int clientSocket
     );
   };
