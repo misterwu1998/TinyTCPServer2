@@ -23,9 +23,11 @@ namespace TTCPS2
       , const char* ip
       , unsigned short port
     );
-    ~Acceptor();
+    virtual ~Acceptor();
 
     // EpollReactor::
+
+  protected:
 
     /// @brief 应对可读事件
     /// @return -1表示出错

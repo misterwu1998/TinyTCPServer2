@@ -51,7 +51,7 @@ namespace TTCPS2
     /// @return 1表示成功；-1表示出错
     int removeTimerTask(std::function<bool (TimerTask const&)> filter);
 
-    /// @brief 由数据处理线程调用，带来length字节数据放到src
+    /// @brief 由数据处理线程调用，从src带来length字节数据
     /// @param src 
     /// @param length 
     /// @return 实际接纳的数据量 /字节; 或-1表示出错

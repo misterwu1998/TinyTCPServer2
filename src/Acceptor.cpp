@@ -5,9 +5,10 @@
 #include "./Acceptor.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include "TinyTCPServer2/Logger.hpp"
-#include "base/epoll/EpollEvent.hpp"
 #include "TinyTCPServer2/TCPConnectionFactory.hpp"
 #include "TinyTCPServer2/TCPConnection.hpp"
+#include "base/epoll/EpollEvent.hpp"
+#include "./NetIOReactor.hpp"
 
 #define LG std::lock_guard<std::mutex>
 
@@ -61,11 +62,23 @@ namespace TTCPS2
       return -1;
     }
 
-    // 新TCPConnection对象
+    // 新TCPConnection对象，指定其归属的reactor
     auto& reactors = server->netIOReactors;
     auto& factory = server->factory;
     auto newConn = factory->operator()(reactors[roundRobin % reactors.size()].get(), newClient);
-    TTCPS2_LOGGER.info("Acceptor::_readCallback(): client socket {0} will be listened by reactor {1}.", newClient,roundRobin);
+    TTCPS2_LOGGER.info("Acceptor::_readCallback(): client socket {0} will be listened by reactor {1}.", newClient, (roundRobin % reactors.size()));
+
+    // 开始监听 TODO[202209192330]
+    EpollEvent ee(EPOLLIN, newClient);//EPOLLOUT在有东西没写完的情况下才监听
+    int ret = newConn->netIOReactor->addEvent(ee);
+    if(0>ret){
+      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): error when starting listening to new client {0}.", newClient);
+      return -1;
+    } else if(1!=ret){
+      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): fail to listen to new client {0}, maybe because too many connections have been established.", newClient);
+      return 0;
+    }
+    TTCPS2_LOGGER.info("Acceptor::_readCallback(): new client {0} is being listened to.", newClient);
 
     // 加入连接集合
     auto& connections = server->connections;
@@ -73,9 +86,10 @@ namespace TTCPS2
       LG lg(server->m_connections);
       connections.insert({newClient,newConn});
     }
-
-    // 开始监听 TODO[202209192330]
-    newConn->netIOReactor->
+    {
+      LG lg(newConn->netIOReactor->m_connections);
+      newConn->netIOReactor->connections.insert({newClient,newConn});
+    }
 
     ++roundRobin;
     return 1;

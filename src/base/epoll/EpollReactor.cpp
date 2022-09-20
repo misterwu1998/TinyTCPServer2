@@ -117,7 +117,7 @@ namespace TTCPS2
     // if(ee.events & 0X020){} POLLNVAL
     if(ee.events & EPOLLERR){
       TTCPS2_LOGGER.info("EpollReactor::dispatch(): EPOLLERR!");
-      if(0>_errorCallback()){
+      if(0>_errorCallback(toHandle)){
         TTCPS2_LOGGER.warn("EpollReactor::dispatch(): fail in handling EPOLLERR. Info of the event: " + ee.getInfo());
         // return -1;
       }else{
@@ -125,14 +125,14 @@ namespace TTCPS2
       }
     }
     if(ee.events & (EPOLLIN|EPOLLPRI|EPOLLRDHUP)){
-      if(0>_readCallback()){
+      if(0>_readCallback(toHandle)){
         TTCPS2_LOGGER.warn("EpollReactor::dispatch(): 0>_readCallback(); Info of the event: " + ee.getInfo());
       }else{
         TTCPS2_LOGGER.trace("EpollReactor::dispatch(): _readCallback() done.");
       }
     }
     if(ee.events & EPOLLOUT){
-      if(0>_writeCallback()){
+      if(0>_writeCallback(toHandle)){
         TTCPS2_LOGGER.warn("EpollReactor::dispatch(): 0>_writeCallback(); Info of the event: " + ee.getInfo());
       }else{
         TTCPS2_LOGGER.trace("EpollReactor::dispatch(): _writeCallback() done.");
