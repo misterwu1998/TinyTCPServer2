@@ -25,7 +25,7 @@ namespace TTCPS2
       TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): no Event needs to be removed.");
     }
 
-    // 移出connections；TODO[202209202222]由~TCPConnection()负责关闭socket
+    // 移出connections
     {
       LG lg(m_connections);
       connections.erase(toHandle.getFD());
@@ -113,8 +113,11 @@ namespace TTCPS2
     while(true){
       length = conn->sendToSocket(LENGTH_PER_SEND);
       if(0>length){//客户端不再能正常通信
-        this->_errorCallback(toHandle);
-        return;
+        if(0>this->_errorCallback(toHandle)){
+          return -1;
+        }else{
+          return 0;
+        }
       }else if(0==length){//暂时不能再写数据了
         break;
       }else{//写了一些数据

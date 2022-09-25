@@ -48,7 +48,7 @@ namespace TTCPS2
 
     std::shared_ptr<Acceptor> acceptor;
     std::vector<std::shared_ptr<NetIOReactor>> netIOReactors;
-    std::vector<std::thread> oneLoopPerThread;
+    std::vector<std::thread> oneLoopPerThread;//nNetIOReactors个网络IO反应堆 + 1个Acceptor
 
     // 常量 //
 

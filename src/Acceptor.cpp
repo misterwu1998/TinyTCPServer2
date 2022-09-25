@@ -32,12 +32,10 @@ namespace TTCPS2
       TTCPS2_LOGGER.error("Acceptor::Acceptor(): inet_pton()");
       assert(false);
     }
-    sockaddr_in addr = {
-        .sin_family = AF_INET
-      , .sin_port = ::htons(port)
-      // , .sin_addr.s_addr = ::inet_addr(ip) //根据《UNIX网络编程卷1》，inet_addr()不再被推荐使用
-      , .sin_addr.s_addr = inetAddr
-    };
+    sockaddr_in addr;
+    addr.sin_family = AF_INET; 
+    addr.sin_port = ::htons(port); 
+    addr.sin_addr.s_addr = inetAddr;
     if(0>::bind(listenFD, (sockaddr*)(&addr), sizeof(sockaddr_in))){
       TTCPS2_LOGGER.error("Acceptor::Acceptor(): bind() fails!");
       assert(false);

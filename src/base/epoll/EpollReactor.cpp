@@ -35,10 +35,9 @@ namespace TTCPS2
 
   int EpollReactor::addEvent(Event const& newE){
     TTCPS2_LOGGER.trace("EpollReactor::addEvent(): start");
-    epoll_event ee = epoll_event{
-        .events = (dynamic_cast<EpollEvent const&>(newE)).events
-      , .data.fd = (dynamic_cast<EpollEvent const&>(newE)).fd //union成员的初始化要排在后面
-    };
+    epoll_event ee;
+    ee.events = (dynamic_cast<EpollEvent const&>(newE)).events;
+    ee.data.fd = (dynamic_cast<EpollEvent const&>(newE)).fd;
     {
       LG lg(m_events);
       if(events.size()>=EPOLL_SIZE){
@@ -64,10 +63,8 @@ namespace TTCPS2
       LG lg(m_events);
       for(auto& iter : events){
         if(filter(iter)){//符合条件
-          temp = epoll_event{
-              .events = iter.events
-            , .data.fd = iter.fd
-          };
+          temp.events = iter.events;
+          temp.data.fd = iter.fd;
           if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp)){
             TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + iter.getInfo());
             return -1;
@@ -103,7 +100,7 @@ namespace TTCPS2
       return -1;
     }
     for(int i = 0; i<nActive; i++){
-      auto ee = std::make_shared<EpollEvent>(ees[i].events, ees[i].data.fd);
+      auto ee = std::make_shared<EpollEvent>((uint32_t)(ees[i].events), (int)(ees[i].data.fd));
       theActives.emplace_back(std::move(ee));
     }
     // TTCPS2_LOGGER.trace("EpollReactor::wait(): end");
