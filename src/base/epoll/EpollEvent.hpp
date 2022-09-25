@@ -25,6 +25,14 @@ namespace TTCPS2
     virtual std::string const getInfo() const;
 
     virtual int getFD() const;
+    
+    bool operator<(EpollEvent const& another);
+    bool operator<=(EpollEvent const& another);
+    bool operator==(EpollEvent const& another);
+    bool operator!=(EpollEvent const& another);
+    bool operator>=(EpollEvent const& another);
+    bool operator>(EpollEvent const& another);
+
   };
   
 } // namespace TTCPS2

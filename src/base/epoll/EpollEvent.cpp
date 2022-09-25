@@ -12,4 +12,28 @@ namespace TTCPS2
     return fd;
   }
 
+  bool EpollEvent::operator<(EpollEvent const& another){
+    return fd<another.fd || (fd==another.fd && events<another.events);
+  }
+
+  bool EpollEvent::operator<=(EpollEvent const& another){
+    return !(this->operator>(another));
+  }
+
+  bool EpollEvent::operator==(EpollEvent const& another){
+    return fd==another.fd && events==another.events;
+  }
+
+  bool EpollEvent::operator!=(EpollEvent const& another){
+    return !(this->operator==(another));
+  }
+
+  bool EpollEvent::operator>=(EpollEvent const& another){
+    return !(this->operator<(another));
+  }
+
+  bool EpollEvent::operator>(EpollEvent const& another){
+    return fd>another.fd || (fd==another.fd && events>another.fd);
+  }
+  
 } // namespace TTCPS

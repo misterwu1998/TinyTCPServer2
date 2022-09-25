@@ -22,34 +22,30 @@ namespace TTCPS2
     task();
   }
 
+  bool TimerTask::operator<(TimerTask const& b){
+    return nextTimestamp<b.nextTimestamp;
+  }
+
+  bool TimerTask::operator>(TimerTask const& b){
+    return nextTimestamp>b.nextTimestamp;
+  }
+
+  bool TimerTask::operator<=(TimerTask const& b){
+    return nextTimestamp<=b.nextTimestamp;
+  }
+
+  bool TimerTask::operator>=(TimerTask const& b){
+    return nextTimestamp>=b.nextTimestamp;
+  }
+
+  bool TimerTask::operator==(TimerTask const& b){
+    return nextTimestamp==b.nextTimestamp;
+  }
+
+  bool TimerTask::operator!=(TimerTask const& b){
+    return nextTimestamp!=b.nextTimestamp;
+  }
+  
   TimerTask::~TimerTask(){}
 
 } // namespace TTCPS2
-
-bool operator<(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp < b.nextTimestamp;
-}
-
-bool operator>(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp > b.nextTimestamp;
-}
-
-bool operator<=(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp <= b.nextTimestamp;
-}
-
-bool operator>=(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp >= b.nextTimestamp;
-}
-
-bool operator==(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp == b.nextTimestamp;
-}
-
-bool operator!=(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp != b.nextTimestamp;
-}
-
-bool isEarlier(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b){
-  return a.nextTimestamp < b.nextTimestamp;
-}

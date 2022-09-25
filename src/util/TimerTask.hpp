@@ -27,6 +27,13 @@ namespace TTCPS2
     bool repeating;
     std::function<void ()> task;
 
+    bool operator<(TimerTask const& b);
+    bool operator>(TimerTask const& b);
+    bool operator<=(TimerTask const& b);
+    bool operator>=(TimerTask const& b);
+    bool operator==(TimerTask const& b);
+    bool operator!=(TimerTask const& b);
+
     /**
      * @brief 额外信息
      */
@@ -49,14 +56,5 @@ namespace TTCPS2
   };
     
 } // namespace TTCPS2
-
-bool operator<(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
-bool operator>(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
-bool operator<=(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
-bool operator>=(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
-bool operator==(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
-bool operator!=(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
-
-bool isEarlier(TTCPS2::TimerTask const& a, TTCPS2::TimerTask const& b);
 
 #endif // _TimerTask_hpp
