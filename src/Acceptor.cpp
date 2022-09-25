@@ -74,7 +74,7 @@ namespace TTCPS2
     auto newConn = factory->operator()(reactors[roundRobin % reactors.size()].get(), newClient);
     TTCPS2_LOGGER.info("Acceptor::_readCallback(): client socket {0} will be listened by reactor {1}.", newClient, (roundRobin % reactors.size()));
 
-    // 开始监听 TODO[202209192330]
+    // 开始监听
     EpollEvent ee(EPOLLIN, newClient);//EPOLLOUT在有东西没写完的情况下才监听
     int ret = newConn->netIOReactor->addEvent(ee);
     if(0>ret){
@@ -87,12 +87,11 @@ namespace TTCPS2
     TTCPS2_LOGGER.info("Acceptor::_readCallback(): new client {0} is being listened to.", newClient);
 
     // 加入连接集合
-    auto& connections = server->connections;
-    {
+    {//server大集合，public
       LG lg(server->m_connections);
-      connections.insert({newClient,newConn});
+      server->connections.insert({newClient,newConn});
     }
-    {
+    {//reactor小集合，protected by NetIOReactor
       LG lg(newConn->netIOReactor->m_connections);
       newConn->netIOReactor->connections.insert({newClient,newConn});
     }

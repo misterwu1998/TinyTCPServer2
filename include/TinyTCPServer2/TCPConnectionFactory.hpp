@@ -18,8 +18,8 @@ namespace TTCPS2
     //Acceptor需要向factory索取新TCPConnection
 
     /// @brief 
-    /// @param netIOReactor 新TCPConnection对象会被分发到哪个网络IO反应堆
-    /// @param clientSocket 与客户端通信的socket
+    /// @param netIOReactor TCPConnection::TCPConnection() <- 新TCPConnection对象会被分发到哪个网络IO反应堆
+    /// @param clientSocket TCPConnection::TCPConnection() <- 与客户端通信的socket
     /// @return 
     virtual std::shared_ptr<TCPConnection> operator() (
         NetIOReactor* netIOReactor

@@ -43,7 +43,6 @@ namespace TTCPS2
     unsigned int nNetIOReactors;
     std::shared_ptr<TCPConnectionFactory> factory;
     ThreadPool* const tp;
-    std::shared_ptr<spdlog::logger> logger;
 
     // 常量
 
@@ -53,7 +52,7 @@ namespace TTCPS2
 
     // 常量 //
 
-    /// @brief {socket文件描述符: TCPConnection对象}
+    /// @brief <socket文件描述符, TCPConnection对象>
     std::unordered_map<int, std::shared_ptr<TCPConnection>> connections;
     std::mutex m_connections;
 
