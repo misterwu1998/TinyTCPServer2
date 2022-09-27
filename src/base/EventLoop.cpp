@@ -4,7 +4,7 @@
 #include "./EventLoop.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 #include "./Event.hpp"
-#include "../util/TimerTask.hpp"
+#include "util/TimerTask.hpp"
 
 #define LG std::lock_guard<std::mutex>
 #define TTQ std::priority_queue<TimerTask, std::vector<TimerTask>, std::function<bool(TimerTask const&, TimerTask const&)>>
@@ -21,6 +21,7 @@ namespace TTCPS2
       TTCPS2_LOGGER.error("EventLoop::EventLoop(): 0>eventFD");
     }
     assert(0<=eventFD);
+    TTCPS2_LOGGER.info("EventLoop::EventLoop(): wakeup FD is {0}", eventFD);
   }
 
   EventLoop::~EventLoop(){
@@ -30,26 +31,36 @@ namespace TTCPS2
   }
 
   int EventLoop::run(){
-    // TTCPS2_LOGGER.trace("EventLoop::run(): start running...");
+    TTCPS2_LOGGER.trace("EventLoop::run(): start running...");
     while(running){
+      TTCPS2_LOGGER.trace("EventLoop::run(): loop begin.");
       theActives.clear();
       int nActive = wait();//==theActive.size()
       if(nActive<0){
         TTCPS2_LOGGER.warn(std::string("EventLoop::run(): nActive<0; errno means: ") + strerror(errno));
+        theActives.clear();
       }
+      TTCPS2_LOGGER.trace("EventLoop::run(): wait() return {0} active events.", nActive);
       for(auto const& anActive : theActives){
         if(-1 == this->_skipWakeupAndDispatch(*anActive)){
           TTCPS2_LOGGER.warn("EventLoop::run(): -1 == this->_skipWakeupAndDispatch(*anActive); the info of anActive: " + anActive->getInfo());
+        }else{
+          TTCPS2_LOGGER.trace("EventLoop::run(): an active been dispatched and handled. Its info: {0}", anActive->getInfo());
         }
       }
       if(-1==doTimerTasks()){
         TTCPS2_LOGGER.warn("EventLoop::run(): -1==doTimerTasks()");
+      }else{
+        TTCPS2_LOGGER.trace("EventLoop::run(): timer tasks done.");
       }
       if(-1==doPendingTasks()){
         TTCPS2_LOGGER.warn("EventLoop::run(): -1==doPendingTasks()");
+      }else{
+        TTCPS2_LOGGER.trace("EventLoop::run(): pending tasks done.");
       }
+      TTCPS2_LOGGER.trace("EventLoop::run(): loop end.");
     }
-    // TTCPS2_LOGGER.trace("EventLoop::run(): stop looping.");
+    TTCPS2_LOGGER.trace("EventLoop::run(): stop looping.");
     return 0;
   }
 
@@ -57,9 +68,13 @@ namespace TTCPS2
     running = false;
     // muduo提到，这里存在边界case：EventLoop对象恰巧已经从run()返回，被使用者销毁了，后续再想wakeup()就会内存越界。
     // 我的解决方案：使用树结构管理对象的生命周期（反正这个EventLoop只有我在用，不是暴露的接口，我想怎么用就怎么用），避免上述case
-    wakeup();//我认为无需判断线程ID，因为即使就是loop线程调用的，也不过是向eventfd写了个数（eventfd设为非阻塞，即使写不进去也不阻塞）却不读而已
-    TTCPS2_LOGGER.trace("EventLoop::shutdown(): done.");
-    return 0;
+    if(0>wakeup()){//我认为无需判断线程ID，因为即使就是loop线程调用的，也不过是向eventfd写了个数（eventfd设为非阻塞，即使写不进去也不阻塞）却不读而已
+      TTCPS2_LOGGER.warn("EventLoop::shutdown(): something wrong when wakeup();");
+      return -1;
+    }else{
+      TTCPS2_LOGGER.trace("EventLoop::shutdown(): done.");
+      return 0;
+    }
   }
   
   int64_t EventLoop::getTimeout(){
@@ -76,27 +91,27 @@ namespace TTCPS2
     {
       LG lg(m_ttq);
       if(ttq.empty()){//队列任务和定时任务一个都没有
-        TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return -1");
+        TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return 'forever'.");
         return -1;//永久
       }
       next = ttq.top().nextTimestamp;
     }
     if(next<=now){//已经到时了
-      TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return 0");
+      TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return 'don't wait'.");
       return 0;//完全不等
     }else{
       int64_t toReturn = 1000*(next-now);//转成微秒
-      TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return " + std::to_string(toReturn));
+      TTCPS2_LOGGER.trace("EventLoop::getTimeout(): return {0} microseconds.", toReturn);
       return toReturn;
     }
   }
 
   int EventLoop::_skipWakeupAndDispatch(Event const& toHandle){
     if(eventFD==toHandle.getFD()){
-      TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): info of wake-up FD is " + toHandle.getInfo());
+      TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): info of wake-up FD is {0}", toHandle.getInfo());
       return 0;
     }
-    TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): the event should be dispatched.");
+    TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): the event should be dispatched. Its info: {0}", toHandle.getInfo());
     return dispatch(toHandle);
   }
 
@@ -110,7 +125,6 @@ namespace TTCPS2
   }
 
   int EventLoop::removeTimerTask(std::function<bool (TimerTask const&)> filter){
-    TTCPS2_LOGGER.trace("EventLoop::removeTimerTask(): start.");
     int count = 0;
     TTQ temp(TimerTask::notEarlier);
     {
@@ -125,7 +139,7 @@ namespace TTCPS2
         temp.pop();
       }
     }
-    TTCPS2_LOGGER.trace("EventLoop::removeTimerTask(): end.");
+    TTCPS2_LOGGER.trace("EventLoop::removeTimerTask(): {0} timer tasks been removed.", count);
     return count;
   }
 
@@ -143,7 +157,9 @@ namespace TTCPS2
       toDo = temp.top();
       temp.pop();
       if(toDo.nextTimestamp <= now){//到时了
+        TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): toDo()");
         toDo();
+        TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): toDo() done.");
         ++count;
         // 重复的要放回
         toDo.nextTimestamp += toDo.interval;
@@ -158,7 +174,7 @@ namespace TTCPS2
         }
       }
     }
-    TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): number of tasks done is " + std::to_string(count));
+    TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): {0} timer tasks done.", count);
     return count;
   }
 
@@ -186,7 +202,7 @@ namespace TTCPS2
         temp.pop();
       }
     }
-    TTCPS2_LOGGER.trace("EventLoop::removePendingTask(): end");
+    TTCPS2_LOGGER.trace("EventLoop::removePendingTask(): {0} pending tasks been removed.", count);
     return count;
   }
 
@@ -203,7 +219,7 @@ namespace TTCPS2
       count++;
       temp.pop();
     }
-    TTCPS2_LOGGER.trace("EventLoop::doPendingTasks(): number of tasks done is " + std::to_string(count));
+    TTCPS2_LOGGER.trace("EventLoop::doPendingTasks(): {0} pending tasks done ", (count));
     return count;
   }
 
@@ -211,6 +227,7 @@ namespace TTCPS2
     TTCPS2_LOGGER.trace("EventLoop::wakeup()...");
     eventfd_write(eventFD, (uint64_t)0x0000000000000001);//要求eventFD被设为非阻塞
     TTCPS2_LOGGER.trace("EventLoop::wakeup(): done");
+    return 0;
   }
 
 } // namespace TTCPS2

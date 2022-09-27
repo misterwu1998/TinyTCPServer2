@@ -25,6 +25,8 @@ namespace TTCPS2
     if(0>listenFD){
       TTCPS2_LOGGER.error("Acceptor::Acceptor(): 0>listenFD");
       assert(false);
+    }else{
+      TTCPS2_LOGGER.info("Acceptor::Acceptor(): listen FD is {0}", listenFD);
     }
 
     uint32_t inetAddr; 
@@ -88,10 +90,15 @@ namespace TTCPS2
     {//server大集合，public
       LG lg(server->m_connections);
       server->connections.insert({newClient,newConn});
+      if(server->connections.count(newClient))
+        TTCPS2_LOGGER.info("Acceptor::_readCallback(): new TCPConnection of socket {0} has been inserted into server's collection.", newClient);
     }
     {//reactor小集合，protected by NetIOReactor
       LG lg(newConn->netIOReactor->m_connections);
       newConn->netIOReactor->connections.insert({newClient,newConn});
+      if(newConn->netIOReactor->connections.count(newClient)){
+        TTCPS2_LOGGER.info("Acceptor::_readCallback(): new TCPConnection of socket {0} has been inserted into NetIOReactor's collection.", newClient);
+      }
     }
 
     ++roundRobin;

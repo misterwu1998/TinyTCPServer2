@@ -3,15 +3,18 @@
 #include "TinyTCPServer2/Logger.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include "TinyTCPServer2/TCPConnection.hpp"
-#include "./util/ThreadPool.hpp"
+#include "util/ThreadPool.hpp"
 
 #define LG std::lock_guard<std::mutex>
 
 namespace TTCPS2
 {
-  NetIOReactor::NetIOReactor(TinyTCPServer2* server): server(server){}
+  NetIOReactor::NetIOReactor(TinyTCPServer2* server): server(server){
+    TTCPS2_LOGGER.trace("NetIOReactor::NetIOReactor()");
+  }
 
   int NetIOReactor::_errorCallback(Event const& toHandle){
+    TTCPS2_LOGGER.trace("NetIOReactor::_errorCallback()");
 
     // 移除这个socket的被监听的事件
     EpollEvent _toHandle(dynamic_cast<EpollEvent const&>(toHandle));
@@ -23,9 +26,11 @@ namespace TTCPS2
       return -1;
     }else if(0==ret){
       TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): no Event needs to be removed.");
+    }else{
+      TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): {0} events of client socket {1} been removed.", ret, _toHandle.fd);
     }
 
-    // 移出connections
+    // 移出connections; ~TCPConnetion()负责close(FD)
     {
       LG lg(m_connections);
       connections.erase(toHandle.getFD());
@@ -40,10 +45,11 @@ namespace TTCPS2
   }
 
   int NetIOReactor::_readCallback(Event const& toHandle){
+    TTCPS2_LOGGER.trace("NetIOReactor::_readCallback()");
     std::shared_ptr<TCPConnection> conn;
     {
       LG lg(m_connections);
-      if(1>=connections.count(toHandle.getFD())){
+      if(1>connections.count(toHandle.getFD())){
         TTCPS2_LOGGER.warn("NetIOReactor::_readCallback(): the event is raised by an unknown connection. Info of the event: {0}", toHandle.getInfo());
         return -1;
       }
@@ -59,6 +65,7 @@ namespace TTCPS2
       }else if(0==length){//暂时不能再读数据了
         break;
       }else{//读了一些数据
+        TTCPS2_LOGGER.trace("NetIOReactor::_readCallback(): read {0} bytes from socket {1}.", length,toHandle.getFD());
       }
     }
 
@@ -79,6 +86,7 @@ namespace TTCPS2
           }else if(0==length){//暂时不能再写数据了
             break;
           }else{//写了一些数据
+            TTCPS2_LOGGER.trace("NetIOReactor::doPendingTasks(): [lambda] write {0} bytes to socket {1}.", length,_toHandle.fd);
           }
         }
 
@@ -88,7 +96,7 @@ namespace TTCPS2
             return _toHandle.fd == e.getFD();
           });
           if(1 > this->addEvent(EpollEvent(EPOLLIN|EPOLLOUT, _toHandle.fd))){
-            TTCPS2_LOGGER.warn("EventLoop::doPendingTasks(): [lambda] fail to listen to EPOLLIN|EPOLLOUT of socket {0}.", _toHandle.fd);
+            TTCPS2_LOGGER.warn("NetIOReactor::doPendingTasks(): [lambda] fail to listen to EPOLLIN|EPOLLOUT of socket {0}.", _toHandle.fd);
           }
         }
 
@@ -97,14 +105,20 @@ namespace TTCPS2
       TTCPS2_LOGGER.warn("NetIOReactor::_readCallback(): fail to add task to ThreadPool.");
       return -1;
     }
+    TTCPS2_LOGGER.trace("NetIOReactor::_readCallback(): task to handle data for socket {0} been added into ThreadPool.", _toHandle.fd);
     return 1;
     
   }
 
   int NetIOReactor::_writeCallback(Event const& toHandle){
+    TTCPS2_LOGGER.trace("NetIOReactor::_writeCallback()");
     std::shared_ptr<TCPConnection> conn;
     {
       LG lg(m_connections);
+      if(1>connections.count(toHandle.getFD())){
+        TTCPS2_LOGGER.warn("NetIOReactor::_writeCallback(): the event is raised by an unknown connection. Info of the event: {0}", toHandle.getInfo());
+        return -1;
+      }
       conn = connections[toHandle.getFD()];
     }
 
@@ -121,6 +135,7 @@ namespace TTCPS2
       }else if(0==length){//暂时不能再写数据了
         break;
       }else{//写了一些数据
+        TTCPS2_LOGGER.trace("NetIOReactor::_writeCallback(): write {0} bytes to socket {1}.", length, toHandle.getFD());
       }
     }
 
@@ -145,6 +160,8 @@ namespace TTCPS2
 
   }
 
-  NetIOReactor::~NetIOReactor(){}
+  NetIOReactor::~NetIOReactor(){
+    TTCPS2_LOGGER.trace("NetIOReactor::~NetIOReactor()");
+  }
 
 } // namespace TTCPS2

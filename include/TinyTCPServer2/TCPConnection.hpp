@@ -54,7 +54,7 @@ namespace TTCPS2
 
   protected:
 
-    /// @brief 由数据处理线程调用，取走length字节数据放到dst
+    /// @brief 由数据处理线程调用，线程安全地取走length字节数据放到dst
     /// @param length 
     /// @param dst 
     /// @return 实际取走的数据量 /字节; 或-1表示客户端不再能正常通信
@@ -78,7 +78,7 @@ namespace TTCPS2
 
   protected:
 
-    /// @brief 由数据处理线程调用，从src带来length字节数据
+    /// @brief 由数据处理线程调用，线程安全地从src带来length字节数据
     /// @param src 
     /// @param length 
     /// @return 实际接纳的数据量 /字节; 或-1表示出错

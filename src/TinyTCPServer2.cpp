@@ -38,6 +38,7 @@ namespace TTCPS2
           if(0>this->netIOReactors[i]->run()){
             TTCPS2_LOGGER.warn("TinyTCPServer2::run(): [lambda] something wrong when running NetIOReactor {0}.",i);
           }
+          TTCPS2_LOGGER.trace("TinyTCPServer2::run(): [lambda] the thread of NetIOReactor {0} been finished.", i);
         })
       );
     }
@@ -49,6 +50,7 @@ namespace TTCPS2
         if(0>this->acceptor->run()){
           TTCPS2_LOGGER.warn("TinyTCPServer2::run(): [lambda] something wrong when running Acceptor.");
         }
+        TTCPS2_LOGGER.trace("TinyTCPServer2::run(): [lambda] the thread of Acceptor been finished.");
       })
     );
     TTCPS2_LOGGER.info("TinyTCPServer2::run(): Acceptor has been launched.");
@@ -59,13 +61,15 @@ namespace TTCPS2
   int TinyTCPServer2::shutdown(){
     
     // 对于每个反应堆，告知不要再继续，然后唤醒
+    acceptor->shutdown();// Acceptor最后启动，最先告知
     for(auto& reactor : netIOReactors){
       reactor->shutdown();//由shutdown()负责唤醒
     }
-    acceptor->shutdown();// 告知Acceptor不要再继续
+    TTCPS2_LOGGER.info("TinyTCPServer2::shutdown(): no reactor will loop again.");
 
     for(auto& t : oneLoopPerThread){
       t.join();
+      TTCPS2_LOGGER.trace("TinyTCPServer2::shutdown(): a thread been joined.");
     }
     return 0;
   }

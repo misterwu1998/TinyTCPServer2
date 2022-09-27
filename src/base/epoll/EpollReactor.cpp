@@ -26,12 +26,14 @@ namespace TTCPS2
       TTCPS2_LOGGER.error("EpollReactor::EpollReactor(): 0>epollFD");
     }
     assert(0<=epollFD);
+    TTCPS2_LOGGER.info("EpollReactor::EpollReactor(): epoll FD is {0}", epollFD);
 
     EpollEvent wakeupEvent(EPOLLIN,eventFD);
     if(1!=addEvent(wakeupEvent)){
       TTCPS2_LOGGER.error("EpollReactor::EpollReactor(): 1!=addEvent(wakeupEvent)");
       assert(false);
     }
+    TTCPS2_LOGGER.info("EpollReactor::EpollReactor(): ready to be woken up.");
 
     TTCPS2_LOGGER.trace("EpollReactor::EpollReactor(): end");
   }
@@ -86,7 +88,7 @@ namespace TTCPS2
   }
 
   int EpollReactor::wait(){
-    // TTCPS2_LOGGER.trace("EpollReactor::wait(): start");
+    TTCPS2_LOGGER.trace("EpollReactor::wait(): start");
     uint64_t timeOut = getTimeout();//微秒
     if(timeOut>=0){
       timeOut /= 1000;
@@ -103,23 +105,32 @@ namespace TTCPS2
       TTCPS2_LOGGER.warn("EpollReactor::wait(): 0>nActive; errno means: " + std::string(strerror(errno)));
       return -1;
     }
+    TTCPS2_LOGGER.trace("EpollReactor::wait(): there are {0} active events.", nActive);
     for(int i = 0; i<nActive; i++){
       auto ee = std::make_shared<EpollEvent>((uint32_t)(ees[i].events), (int)(ees[i].data.fd));
+      TTCPS2_LOGGER.trace("EpollReactor::wait(): active event info: {0}", ee->getInfo());
       theActives.emplace_back(std::move(ee));
     }
-    // TTCPS2_LOGGER.trace("EpollReactor::wait(): end");
+    TTCPS2_LOGGER.trace("EpollReactor::wait(): end");
     return nActive;
   }
 
   int EpollReactor::dispatch(Event const& toHandle){
+    TTCPS2_LOGGER.trace("EpollReactor::dispatch()");
     // 此处情况的分类和顺序参考muduo
     auto& ee = dynamic_cast<EpollEvent const&>(toHandle);
-    if((ee.events & EPOLLHUP) && !(ee.events & EPOLLIN)){}
+    if((ee.events & EPOLLHUP) && !(ee.events & EPOLLIN)){
+      if(0>_errorCallback(toHandle)){
+        TTCPS2_LOGGER.warn("EpollReactor::dispatch(): fail in handling EPOLLHUP. Info of the event: {0}", ee.getInfo());
+      }else{
+        TTCPS2_LOGGER.info("EpollReactor::dispatch(): EPOLLHUP been handled.");
+      }
+    }
     // if(ee.events & 0X020){} POLLNVAL
     if(ee.events & EPOLLERR){
       TTCPS2_LOGGER.info("EpollReactor::dispatch(): EPOLLERR!");
       if(0>_errorCallback(toHandle)){
-        TTCPS2_LOGGER.warn("EpollReactor::dispatch(): fail in handling EPOLLERR. Info of the event: " + ee.getInfo());
+        TTCPS2_LOGGER.warn("EpollReactor::dispatch(): fail in handling EPOLLERR. Info of the event: {0}", ee.getInfo());
         // return -1;
       }else{
         TTCPS2_LOGGER.info("EpollReactor::dispatch(): EPOLLERR been handled.");
@@ -140,6 +151,7 @@ namespace TTCPS2
       }
     }
     return 0;
+    TTCPS2_LOGGER.trace("EpollReactor::dispatch() end");
   }
 
   EpollReactor::~EpollReactor(){
