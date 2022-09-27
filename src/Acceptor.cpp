@@ -74,19 +74,7 @@ namespace TTCPS2
     auto newConn = factory->operator()(reactors[roundRobin % reactors.size()].get(), newClient);
     TTCPS2_LOGGER.info("Acceptor::_readCallback(): client socket {0} will be listened by reactor {1}.", newClient, (roundRobin % reactors.size()));
 
-    // 开始监听
-    EpollEvent ee(EPOLLIN, newClient);//EPOLLOUT在有东西没写完的情况下才监听
-    int ret = newConn->netIOReactor->addEvent(ee);
-    if(0>ret){
-      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): error when starting listening to new client {0}.", newClient);
-      return -1;
-    } else if(1!=ret){
-      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): fail to listen to new client {0}, maybe because too many connections have been established.", newClient);
-      return 0;
-    }
-    TTCPS2_LOGGER.info("Acceptor::_readCallback(): new client {0} is being listened to.", newClient);
-
-    // 加入连接集合
+    // 加入连接集合（应当在监听之前就加入，否则NetIOReactor遇到活跃事件时可能无法在unordered_map中找到TCPConection
     {//server大集合，public
       LG lg(server->m_connections);
       server->connections.insert({newClient,newConn});
@@ -101,6 +89,18 @@ namespace TTCPS2
       }
     }
 
+    // 开始监听
+    EpollEvent ee(EPOLLIN, newClient);//EPOLLOUT在有东西没写完的情况下才监听
+    int ret = newConn->netIOReactor->addEvent(ee);
+    if(0>ret){
+      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): error when starting listening to new client {0}.", newClient);
+      return -1;
+    } else if(1!=ret){
+      TTCPS2_LOGGER.warn("Acceptor::_readCallback(): fail to listen to new client {0}, maybe because too many connections have been established.", newClient);
+      return 0;
+    }
+    TTCPS2_LOGGER.info("Acceptor::_readCallback(): new client {0} is being listened to.", newClient);
+
     ++roundRobin;
     return 1;
 
@@ -110,7 +110,7 @@ namespace TTCPS2
     if(0>::close(listenFD)){
       TTCPS2_LOGGER.warn("Acceptor::~Acceptor(): fail to close socket {0}.", listenFD);
     } else{
-      TTCPS2_LOGGER.info("Acceptor::~Acceptor(): socket {0} been closed.", listenFD);
+      TTCPS2_LOGGER.info("Acceptor::~Acceptor(): listen socket {0} been closed.", listenFD);
     }
   }
   

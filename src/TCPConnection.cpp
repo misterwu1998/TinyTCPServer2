@@ -62,7 +62,7 @@ namespace TTCPS2
       return -1;
     }
     else{//errno==EWOULDBLOCK, 没数据可以收了
-      TTCPS2_LOGGER.info("TCPConnection::readFromSocket(): no more data read from client socket {0}.", this->clientSocket);
+      TTCPS2_LOGGER.trace("TCPConnection::readFromSocket(): no more data read from client socket {0}.", this->clientSocket);
       return 0;
     }
     
@@ -82,7 +82,7 @@ namespace TTCPS2
     LG lg(m_rb);
     unsigned int actualLength = std::min((uint32_t)length, rb->getLength());
     if(actualLength<1){
-      TTCPS2_LOGGER.info("TCPConnection::takeData(): no unhandled data from socket {0} yet.", clientSocket);
+      TTCPS2_LOGGER.trace("TCPConnection::takeData(): no unhandled data from socket {0} now.", clientSocket);
       return 0;
     }else{
       TTCPS2_LOGGER.trace("TCPConnection::takeData(): {0} bytes from socket {1} not handled yet.", actualLength,clientSocket);
@@ -115,7 +115,7 @@ namespace TTCPS2
           TTCPS2_LOGGER.warn("TCPConnection::handle(): 0 > this->takeData()");
           return -1;
         }else if(0==len){
-          TTCPS2_LOGGER.trace("TCPConnection::handle(): no data yet.");
+          TTCPS2_LOGGER.trace("TCPConnection::handle(): no data now.");
           break;
         }
       // }
@@ -184,7 +184,7 @@ namespace TTCPS2
     LG lg(m_wb);
     pr = wb->getReadingPtr(length,actualLength);
     if(actualLength<1){
-      TTCPS2_LOGGER.info("TCPConnection::sendToSocket(): client {0} has nothing to send now.", clientSocket);
+      TTCPS2_LOGGER.trace("TCPConnection::sendToSocket(): client {0} has nothing to send now.", clientSocket);
       return 0;
     }
 

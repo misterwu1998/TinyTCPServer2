@@ -31,7 +31,7 @@ namespace TTCPS2
   }
 
   int EventLoop::run(){
-    TTCPS2_LOGGER.trace("EventLoop::run(): start running...");
+    TTCPS2_LOGGER.info("EventLoop::run(): start running...");
     while(running){
       TTCPS2_LOGGER.trace("EventLoop::run(): loop begin.");
       theActives.clear();
@@ -60,7 +60,7 @@ namespace TTCPS2
       }
       TTCPS2_LOGGER.trace("EventLoop::run(): loop end.");
     }
-    TTCPS2_LOGGER.trace("EventLoop::run(): stop looping.");
+    TTCPS2_LOGGER.info("EventLoop::run(): stop looping.");
     return 0;
   }
 
@@ -121,6 +121,8 @@ namespace TTCPS2
       ttq.push(tt); 
     }
     TTCPS2_LOGGER.trace("EventLoop::addTimerTask(): successfully pushed a TimerTask into queue.");
+    wakeup();//解决边界case：恰好在getTimeout()且进入阻塞后，一个task被添加
+    TTCPS2_LOGGER.trace("EventLoop::addTimerTask(): wakeup()");
     return 1;
   }
 
@@ -180,9 +182,10 @@ namespace TTCPS2
 
   int EventLoop::addPendingTask(PT task){
     TTCPS2_LOGGER.trace("EventLoop::addPendingTask(): start");
-    LG lg(m_ptq);
-    ptq.push(task);
-    TTCPS2_LOGGER.trace("EventLoop::addPendingTask(): end");
+    { LG lg(m_ptq);
+      ptq.push(task);}
+    wakeup();//解决边界case：恰好在getTimeout()且进入阻塞后，一个task被添加
+    TTCPS2_LOGGER.trace("EventLoop::addPendingTask(): wakeup()");
     return 1;
   }
 

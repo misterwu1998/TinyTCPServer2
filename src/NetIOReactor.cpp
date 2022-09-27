@@ -25,7 +25,7 @@ namespace TTCPS2
       TTCPS2_LOGGER.warn("NetIOReactor::_errorCallback(): fail to stop listening to the error client {0}.", toHandle.getFD());
       return -1;
     }else if(0==ret){
-      TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): no Event needs to be removed.");
+      TTCPS2_LOGGER.trace("NetIOReactor::_errorCallback(): no Event needs to be removed.");
     }else{
       TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): {0} events of client socket {1} been removed.", ret, _toHandle.fd);
     }
@@ -39,7 +39,7 @@ namespace TTCPS2
       LG lg(server->m_connections);
       server->connections.erase(toHandle.getFD());
     }
-    TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): the TCPConnection has been discarded.");
+    TTCPS2_LOGGER.info("NetIOReactor::_errorCallback(): the TCPConnection of socket {0} has been discarded.", _toHandle.fd);
     return 1;
 
   }
@@ -73,6 +73,7 @@ namespace TTCPS2
     EpollEvent _toHandle(dynamic_cast<EpollEvent const&>(toHandle));
     if(! server->tp->addTask([conn, this, _toHandle](){//@ThreadPool线程
       conn->handle();
+      TTCPS2_LOGGER.trace("@ThreadPool: data from socket {0} been handled.", _toHandle.fd);
       // 处理数据后，让NetIOReactor负责发送
       this->addPendingTask([conn, this, _toHandle](){//@(当前reactor所在的)网络IO线程
         
@@ -101,6 +102,8 @@ namespace TTCPS2
         }
 
       });
+      TTCPS2_LOGGER.trace("@ThreadPool: task to send response to socket {0} been added to pending queue.", _toHandle.fd);
+
     })){//追加任务失败
       TTCPS2_LOGGER.warn("NetIOReactor::_readCallback(): fail to add task to ThreadPool.");
       return -1;
@@ -149,7 +152,7 @@ namespace TTCPS2
         TTCPS2_LOGGER.warn("NetIOReactor::_writeCallback(): error in removing the Event: {0}", _toHandle.getInfo());
         return -1;
       }else if(0==n){
-        TTCPS2_LOGGER.info("NetIOReactor::_writeCallback(): no Event needs to be removed.");
+        TTCPS2_LOGGER.trace("NetIOReactor::_writeCallback(): no Event needs to be removed.");
       }
       //可读事件重新监听
       if(1>=this->addEvent(EpollEvent(EPOLLIN, _toHandle.fd))){
