@@ -48,4 +48,12 @@ namespace TTCPS2
   
   TimerTask::~TimerTask(){}
 
+  bool TimerTask::notEarlier(TimerTask const& a, TimerTask const& b){
+    return a.nextTimestamp>=b.nextTimestamp;
+  }
+
+  bool TimerTask::notLater(TimerTask const& a, TimerTask const& b){
+    return a.nextTimestamp<=b.nextTimestamp;
+  }
+
 } // namespace TTCPS2

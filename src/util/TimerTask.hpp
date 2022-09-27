@@ -34,6 +34,9 @@ namespace TTCPS2
     bool operator==(TimerTask const& b);
     bool operator!=(TimerTask const& b);
 
+    static bool notEarlier(TimerTask const& a, TimerTask const& b);
+    static bool notLater(TimerTask const& a, TimerTask const& b);
+
     /**
      * @brief 额外信息
      */
@@ -54,7 +57,7 @@ namespace TTCPS2
     ~TimerTask();
 
   };
-    
+  
 } // namespace TTCPS2
 
 #endif // _TimerTask_hpp

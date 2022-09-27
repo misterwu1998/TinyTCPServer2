@@ -9,14 +9,17 @@
 
 namespace TTCPS2
 {
-  EpollReactor::EpollReactor(){
+  EpollReactor::EpollReactor()
+  : events(operator<=){
     TTCPS2_LOGGER.trace("EpollReactor::EpollReactor(): start");
-    running = true;
-    eventFD = eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
-    if(0>eventFD){
-      TTCPS2_LOGGER.error("EpollReactor::EpollReactor(): 0>eventFD");
-    }
-    assert(0<=eventFD);
+
+    // 交还给 EventLoop()
+    // running = true;
+    // eventFD = eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
+    // if(0>eventFD){
+    //   TTCPS2_LOGGER.error("EpollReactor::EpollReactor(): 0>eventFD");
+    // }
+    // assert(0<=eventFD);
     
     epollFD = epoll_create(EPOLL_SIZE);
     if(0>epollFD){
@@ -65,16 +68,17 @@ namespace TTCPS2
         if(filter(iter)){//符合条件
           temp.events = iter.events;
           temp.data.fd = iter.fd;
-          if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp)){
-            TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + iter.getInfo());
-            return -1;
-          }
           toDel.emplace_back(iter);
         }
       }
       for(auto& iter : toDel){
         events.erase(iter);
         ++count;
+      }
+    }
+    for(auto& iter : toDel){
+      if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp)){
+        TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + iter.getInfo());
       }
     }
     TTCPS2_LOGGER.trace("EpollReactor::removeEvent(): end");
@@ -142,7 +146,7 @@ namespace TTCPS2
     if(0>close(epollFD)){
       TTCPS2_LOGGER.warn("EpollReactor::~EpollReactor(): 0>close(epollFD)");
     }
-    if(0>close(eventFD)){
+    if(false){ // 交还给 EventLoop() if(0>close(eventFD)){
       TTCPS2_LOGGER.warn("EpollReactor::~EpollReactor(): 0>close(eventFD)");
     }
     TTCPS2_LOGGER.trace("EpollReactor::~EpollReactor(): end");

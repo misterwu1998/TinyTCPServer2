@@ -14,7 +14,7 @@ namespace TTCPS2
   protected:
     int epollFD;
     
-    std::set<EpollEvent> events;
+    std::set<EpollEvent, std::function<bool(EpollEvent const&, EpollEvent const&)>> events;
     std::mutex m_events;
 
   public:

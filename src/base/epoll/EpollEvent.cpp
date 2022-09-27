@@ -37,3 +37,11 @@ namespace TTCPS2
   }
   
 } // namespace TTCPS
+
+bool operator<=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b){
+  return a.fd<b.fd || (a.fd==b.fd && a.events<=b.events);
+}
+
+bool operator>=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b){
+  return a.fd>b.fd || (a.fd==b.fd && a.events>=b.events);
+}

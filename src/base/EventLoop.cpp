@@ -7,12 +7,28 @@
 #include "../util/TimerTask.hpp"
 
 #define LG std::lock_guard<std::mutex>
-#define TTQ std::priority_queue<TimerTask>
+#define TTQ std::priority_queue<TimerTask, std::vector<TimerTask>, std::function<bool(TimerTask const&, TimerTask const&)>>
 #define PT std::function<void ()>
 #define PTQ std::queue<PT>
 
 namespace TTCPS2
 {
+  EventLoop::EventLoop()
+  : running(true)
+  , ttq(TimerTask::notEarlier){
+    eventFD = eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
+    if(0>eventFD){
+      TTCPS2_LOGGER.error("EventLoop::EventLoop(): 0>eventFD");
+    }
+    assert(0<=eventFD);
+  }
+
+  EventLoop::~EventLoop(){
+    if(0>close(eventFD)){
+      TTCPS2_LOGGER.warn("EventLoop::~EventLoop(): 0>close(eventFD)");
+    }
+  }
+
   int EventLoop::run(){
     // TTCPS2_LOGGER.trace("EventLoop::run(): start running...");
     while(running){
@@ -96,7 +112,7 @@ namespace TTCPS2
   int EventLoop::removeTimerTask(std::function<bool (TimerTask const&)> filter){
     TTCPS2_LOGGER.trace("EventLoop::removeTimerTask(): start.");
     int count = 0;
-    TTQ temp;
+    TTQ temp(TimerTask::notEarlier);
     {
       LG lg(m_ttq);
       temp.swap(ttq);
@@ -116,7 +132,7 @@ namespace TTCPS2
   int EventLoop::doTimerTasks(){
     TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): start");
     int count = 0;
-    TTQ temp;
+    TTQ temp(TimerTask::notEarlier);
     {
       LG lg(m_ttq);
       temp.swap(ttq);

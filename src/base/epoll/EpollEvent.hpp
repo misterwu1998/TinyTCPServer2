@@ -32,9 +32,12 @@ namespace TTCPS2
     bool operator!=(EpollEvent const& another);
     bool operator>=(EpollEvent const& another);
     bool operator>(EpollEvent const& another);
-
+    
   };
   
 } // namespace TTCPS2
+
+bool operator<=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b);
+bool operator>=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b);
 
 #endif // _EpollEvent_hpp

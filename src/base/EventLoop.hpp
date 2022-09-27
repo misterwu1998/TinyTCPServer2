@@ -8,12 +8,12 @@
 #include <queue>
 #include <mutex>
 
-#include "../util/TimerTask.hpp"
+// #include "../util/TimerTask.hpp"
 
 namespace TTCPS2
 {
   class Event;
-  // class TimerTask;
+  class TimerTask;
 
   class EventLoop
   {
@@ -25,7 +25,7 @@ namespace TTCPS2
     std::vector<std::shared_ptr<Event>> theActives;
 
     /**     * @brief 定时任务     */
-    std::priority_queue<TimerTask> ttq;
+    std::priority_queue<TimerTask, std::vector<TimerTask>, std::function<bool(TimerTask const&, TimerTask const&)>> ttq;
     std::mutex m_ttq;
 
     /**     * @brief 队列任务     */
@@ -33,6 +33,10 @@ namespace TTCPS2
     std::mutex m_ptq;
 
     int eventFD;
+  
+  public:
+    EventLoop();
+    ~EventLoop();
 
   // 核心部分
 
@@ -41,12 +45,12 @@ namespace TTCPS2
     /// @brief 将事件newE加入监听
     /// @param newE 
     /// @return 成功被添加的个数；或-1表示出错
-    virtual int addEvent(Event const& newE) = 0;
+    virtual int addEvent(Event const& newE){}
 
     /// @brief 终止对满足条件的事件的监听
     /// @param filter 筛选条件，遇到满足条件的参数就返回true
     /// @return 成功被移除的个数，或-1表示出错
-    virtual int removeEvent(std::function<bool (Event const&)> filter) = 0;
+    virtual int removeEvent(std::function<bool (Event const&)> filter){}
   
     /// @return -1表示出错
     int run();
@@ -60,7 +64,7 @@ namespace TTCPS2
     /// @brief run()等待事件发生，通过theActive传回活跃事件
     /// 可以通过getTimeout()计算等待时限，也可以自行决定
     /// @return 活跃事件的数量
-    virtual int wait() = 0;
+    virtual int wait(){}
     
   private:
 
@@ -70,7 +74,7 @@ namespace TTCPS2
 
     /// @brief run()把一个事件分发给正确的回调函数
     /// @return -1表示出错
-    virtual int dispatch(Event const& toHandle) = 0;
+    virtual int dispatch(Event const& toHandle){}
     
   // 核心部分/
 
