@@ -25,6 +25,8 @@ namespace TTCPS2
         NetIOReactor* netIOReactor
       , int clientSocket
     );
+
+    virtual ~TCPConnectionFactory(){};
   };
 
 } // namespace TTCPS2

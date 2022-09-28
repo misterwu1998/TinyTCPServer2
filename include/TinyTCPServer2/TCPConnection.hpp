@@ -55,12 +55,13 @@ namespace TTCPS2
     /// @brief 由数据处理线程调用，线程安全地取走length字节数据放到dst
     /// @param length 
     /// @param dst 
-    /// @return 实际取走的数据量 /字节; 或-1表示客户端不再能正常通信
+    /// @return 实际取走的数据量 /字节; 或-1表示出错
     int takeData(int length, char* dst);
 
   public:
 
     /// @brief 由数据处理线程调用：takeData()取走数据到指定的内存空间进行处理，处理后bringData()放回
+    /// 缺省实现：echo
     /// @return 
     virtual int handle();
     
@@ -98,7 +99,7 @@ namespace TTCPS2
     int remindNetIOReactor();
 
   public:
-    ~TCPConnection();
+    virtual ~TCPConnection();
   };
 
 } // namespace TTCPS2

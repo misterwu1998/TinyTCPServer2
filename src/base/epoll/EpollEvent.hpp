@@ -18,6 +18,7 @@ namespace TTCPS2
 
     EpollEvent(){}
     EpollEvent(uint32_t events, int fd);
+    ~EpollEvent(){}
     
     /**
      * @brief Get the information.
