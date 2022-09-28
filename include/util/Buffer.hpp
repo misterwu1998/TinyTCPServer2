@@ -57,7 +57,7 @@ namespace TTCPS2
      */
     long pop(unsigned int length);
 
-    ~Buffer();
+    virtual ~Buffer();
 
   };
   

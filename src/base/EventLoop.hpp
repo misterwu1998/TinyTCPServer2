@@ -36,7 +36,7 @@ namespace TTCPS2
   
   public:
     EventLoop();
-    ~EventLoop();
+    virtual ~EventLoop();
 
   // 核心部分
 
