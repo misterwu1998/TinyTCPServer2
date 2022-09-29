@@ -22,8 +22,14 @@ namespace TTCPS2
     std::mutex m_connections;
   
   public:
+
     TinyTCPServer2* server;
     NetIOReactor(TinyTCPServer2* server);
+
+    /// @brief 线程安全地取TCPConnection对象
+    /// @param clientSocket TCPConnection对应的客户的socket
+    /// @return 如果所需的TCPConnection不再属于当前网络IO反应堆，就返回nullptr（TODO: 解决边界case: _errorCallback()执行到一半，TCPConnection暂未丢弃但即将丢弃时，这个函数被调用）
+    std::shared_ptr<TCPConnection> getConnection_threadSafe(int clientSocket);
     
   // EpollReactor::
 

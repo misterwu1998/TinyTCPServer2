@@ -6,7 +6,9 @@
 #include "util/Buffer.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include "TinyTCPServer2/Logger.hpp"
+#include "util/TimerTask.hpp"
 #include "./NetIOReactor.hpp"
+#include "./base/epoll/EpollEvent.hpp"
 #include <algorithm>
 
 #define LG std::lock_guard<std::mutex>
@@ -104,6 +106,20 @@ namespace TTCPS2
     // 缺省实现：原样发回
     TTCPS2_LOGGER.trace("TCPConnection::handle(): echo...");
 
+    // 测试：定时任务
+    auto _this = netIOReactor->getConnection_threadSafe(clientSocket);
+    if(_this){
+      addTimerTask(TimerTask(true, 1000, [_this](){
+        if(5!=_this->bringData("shit",5)){
+          TTCPS2_LOGGER.warn("@TimerTask: something wrong when TCPConnection::bringData() of client socket {0}.", _this->clientSocket);
+        }
+        if(0>_this->remindNetIOReactor()){
+          TTCPS2_LOGGER.warn("@TimerTask: something wrong when TCPConnection::remindNetIOReactor of client socket {0}.", _this->clientSocket);
+        }
+        TTCPS2_LOGGER.info("@TimerTask: delayed-sending test passed!");
+      }));
+    }
+
     int len;
     char temp[4096];
     do{
@@ -133,7 +149,7 @@ namespace TTCPS2
       
     } while (len>0);
     return 1;
-    
+
   }
   
   int TCPConnection::addTimerTask(TimerTask const& tt){
@@ -203,6 +219,27 @@ namespace TTCPS2
     else{//内核缓冲区满
       TTCPS2_LOGGER.trace("TCPConnection::sendToSocket(): client socket {0} cannot send data now.", clientSocket);
       return 0;
+    }
+  }
+
+  int TCPConnection::remindNetIOReactor(){
+    if(netIOReactor->getConnection_threadSafe(clientSocket)){//仍在反应堆内
+      auto _clientSocket = clientSocket;
+      if(0>netIOReactor->removeEvent([_clientSocket](Event const& e)->bool{
+        return e.getFD() == _clientSocket;
+      })){
+        TTCPS2_LOGGER.warn("TCPConnection::remindNetIOReactor(): something wrong when trying to remove Event of client socket {0}.", _clientSocket);
+        return -1;
+      }
+      if(0>netIOReactor->addEvent(EpollEvent(EPOLLIN|EPOLLOUT, clientSocket))){
+        TTCPS2_LOGGER.warn("TCPConnection::remindNetIOReactor(): something wrong when trying to listen to EPOLLOUT of client socket {0}.", clientSocket);
+        return -1;
+      }else{
+        TTCPS2_LOGGER.trace("TCPConnection::remindNetIOReactor(): EPOLLOUT of client socket {0} been listened to.", clientSocket);
+      }
+    }else {
+      TTCPS2_LOGGER.warn("TCPConnection::remindNetIOReactor(): TCPConnection of client socket {0} been discarded but still asked to be listened.", clientSocket);
+      return -1;
     }
   }
 

@@ -4,6 +4,7 @@
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include "TinyTCPServer2/TCPConnection.hpp"
 #include "util/ThreadPool.hpp"
+#include "util/TimerTask.hpp"
 
 #define LG std::lock_guard<std::mutex>
 
@@ -11,6 +12,22 @@ namespace TTCPS2
 {
   NetIOReactor::NetIOReactor(TinyTCPServer2* server): server(server){
     TTCPS2_LOGGER.trace("NetIOReactor::NetIOReactor()");
+  }
+
+  std::shared_ptr<TCPConnection> NetIOReactor::getConnection_threadSafe(int clientSocket){
+    { //先看看当前反应堆有没有
+      LG lg(m_connections);
+      if(connections.count(clientSocket)>0){
+        return connections[clientSocket];
+      }
+    }
+    { //去server那儿的大集合找
+      LG lg(server->m_connections);
+      if(server->connections.count(clientSocket)>0){
+        return server->connections[clientSocket];
+      }
+    }
+    return nullptr;
   }
 
   int NetIOReactor::_errorCallback(Event const& toHandle){
@@ -76,6 +93,7 @@ namespace TTCPS2
       TTCPS2_LOGGER.trace("@ThreadPool: data from socket {0} been handled.", _toHandle.fd);
       // 处理数据后，让NetIOReactor负责发送
       this->addPendingTask([conn, this, _toHandle](){//@(当前reactor所在的)网络IO线程
+      // this->addTimerTask(TimerTask(false, 1000, [conn, this, _toHandle](){//测试：延迟一秒发送
         
         // 尽量发
         int length;
@@ -102,6 +120,7 @@ namespace TTCPS2
         }
 
       });
+      // }));//测试：延迟一秒发送
       TTCPS2_LOGGER.trace("@ThreadPool: task to send response to socket {0} been added to pending queue.", _toHandle.fd);
 
     })){//追加任务失败
@@ -155,7 +174,7 @@ namespace TTCPS2
         TTCPS2_LOGGER.trace("NetIOReactor::_writeCallback(): no Event needs to be removed.");
       }
       //可读事件重新监听
-      if(1>=this->addEvent(EpollEvent(EPOLLIN, _toHandle.fd))){
+      if(1>this->addEvent(EpollEvent(EPOLLIN, _toHandle.fd))){
         TTCPS2_LOGGER.warn("NetIOReactor::_writeCallback(): fail to listen to EPOLLIN of socket {0}.", _toHandle.fd);
       }
     }

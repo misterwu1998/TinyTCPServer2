@@ -50,8 +50,15 @@ namespace TTCPS2
         return 0;
       }
       if(0>epoll_ctl(epollFD,EPOLL_CTL_ADD, ee.data.fd, &ee)){
-        TTCPS2_LOGGER.warn("EpollReactor::addEvent(): epoll_ctl(); errno means: " + std::string(strerror(errno)));
-        return -1;
+        if(errno==EEXIST){//FD本就在树上
+          if(0>epoll_ctl(epollFD,EPOLL_CTL_MOD, ee.data.fd, &ee)){
+            TTCPS2_LOGGER.warn("EpollReactor::addEvent(): epoll_ctl(EPOLL_CTL_MOD); errno means: " + std::string(strerror(errno)));
+            return -1;
+          }
+        }else{//FD本来不在树上也出错
+          TTCPS2_LOGGER.warn("EpollReactor::addEvent(): epoll_ctl(EPOLL_CTL_ADD); errno means: " + std::string(strerror(errno)));
+          return -1;
+        }
       }
       events.insert(dynamic_cast<EpollEvent const&>(newE));
     }
@@ -79,7 +86,7 @@ namespace TTCPS2
       }
     }
     for(auto& iter : toDel){
-      if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp)){
+      if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp) && errno!=ENOENT){//FD本就不在epoll树上不属于错误
         TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + iter.getInfo());
       }
     }

@@ -19,6 +19,7 @@ namespace TTCPS2
   class TCPConnection
   {
   private:
+  
     friend class Acceptor;
     friend class NetIOReactor;
 
@@ -40,20 +41,17 @@ namespace TTCPS2
     );
   
   protected:
-
     /// @brief 由NetIOReactor线程调用，尽可能从内核缓冲区读取length字节数据
     /// @param length 
     /// @return 实际读取的数据量 /字节; 或-1表示客户端不再能正常通信
     int readFromSocket(int length);
 
   public:
-
     /// @brief 线程安全地查看当前有多少数据未处理 /字节
     /// @return -1表示异常
     int getUnprocessedLength();
 
   protected:
-
     /// @brief 由数据处理线程调用，线程安全地取走length字节数据放到dst
     /// @param length 
     /// @param dst 
@@ -77,7 +75,6 @@ namespace TTCPS2
     int removeTimerTask(std::function<bool (TimerTask const&)> filter);
 
   protected:
-
     /// @brief 由数据处理线程调用，线程安全地从src带来length字节数据
     /// @param src 
     /// @param length 
@@ -85,17 +82,20 @@ namespace TTCPS2
     int bringData(const char* src, int length);
 
   public:
-
     /// @brief 线程安全地查看当前有多少数据未发送
     /// @return -1表示出错
     int getUnsentLength();
 
   protected:
-
     /// @brief 由NetIOReactor线程调用，尽可能向内核发送缓冲区追加length字节的数据
     /// @param length 
     /// @return 实际追加的数据量 /字节; -1表示客户端不再能正常通信
     int sendToSocket(int length);
+  
+  public:
+    /// @brief 立即提醒网络IO反应堆可以发送数据（实现方式：让网络IO反应堆立即监听可写事件）
+    /// @return 0表示成功; -1表示出错
+    int remindNetIOReactor();
 
   public:
     ~TCPConnection();
