@@ -8,8 +8,6 @@
 #include <queue>
 #include <mutex>
 
-// #include "util/TimerTask.hpp"
-
 namespace TTCPS2
 {
   class Event;

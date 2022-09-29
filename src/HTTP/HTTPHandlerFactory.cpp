@@ -3,19 +3,15 @@
 
 namespace TTCPS2
 {
-  HTTPHandlerFactory::HTTPHandlerFactory(){
-    
-  }
+  int HTTPHandlerFactory::route(http_method method, std::string const& path, std::function<int (std::shared_ptr<HTTPHandler>)> callback){}
 
   std::shared_ptr<TCPConnection> HTTPHandlerFactory::operator()(
       NetIOReactor* netIOReactor
     , int clientSocket
   ){
-    return std::make_shared<HTTPHandler>(netIOReactor,clientSocket);
+    return std::make_shared<HTTPHandler>(netIOReactor,clientSocket,router);
   }
 
-  HTTPHandlerFactory::~HTTPHandlerFactory(){
-
-  }
+  HTTPHandlerFactory::~HTTPHandlerFactory(){}
 
 } // namespace TTCPS2
