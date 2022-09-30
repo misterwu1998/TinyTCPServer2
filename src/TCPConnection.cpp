@@ -75,7 +75,7 @@ namespace TTCPS2
     return rb->getLength();
   }
 
-  int TCPConnection::takeData(int length, char* dst){
+  int TCPConnection::takeData(int length, void* dst){
     if(length<=0){
       TTCPS2_LOGGER.warn("TCPConnection::takeData(): length<=0");
       return -1;
@@ -162,7 +162,7 @@ namespace TTCPS2
     return this->netIOReactor->removeTimerTask(filter);
   }
 
-  int TCPConnection::bringData(const char* src, int length){
+  int TCPConnection::bringData(const void* src, int length){
     if(length<=0){
       TTCPS2_LOGGER.warn("TCPConnection::bringData(): length<=0");
       return -1;

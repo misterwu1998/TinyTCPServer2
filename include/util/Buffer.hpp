@@ -1,3 +1,7 @@
+#if !defined(MAX_BUFFER_SIZE)
+#define MAX_BUFFER_SIZE (1<<19) //每个TCPConnection有读、写两个缓冲区，每个缓冲区允许的最大容量 /字节; 不得小于2*max(LENGTH_PER_RECV,LENGTH_PER_SEND)
+#endif // MAX_BUFFER_SIZE
+
 #if !defined(_Buffer_hpp)
 #define _Buffer_hpp
 

@@ -1,7 +1,3 @@
-#if !defined(MAX_BUFFER_SIZE)
-#define MAX_BUFFER_SIZE (1<<19) //每个TCPConnection有读、写两个缓冲区，每个缓冲区允许的最大容量 /字节; 不得小于2*max(LENGTH_PER_RECV,LENGTH_PER_SEND)
-#endif // MAX_BUFFER_SIZE
-
 #if !defined(_TCPConnection_hpp)
 #define _TCPConnection_hpp
 
@@ -56,13 +52,13 @@ namespace TTCPS2
     /// @param length 
     /// @param dst 
     /// @return 实际取走的数据量 /字节; 或-1表示出错
-    int takeData(int length, char* dst);
+    int takeData(int length, void* dst);
 
   public:
 
     /// @brief 由数据处理线程调用：takeData()取走数据到指定的内存空间进行处理，处理后bringData()放回
     /// 缺省实现：echo
-    /// @return 
+    /// @return -1表示出错
     virtual int handle();
     
     /// @brief 由数据处理线程调用，向服务器添加一项定时任务
@@ -80,7 +76,7 @@ namespace TTCPS2
     /// @param src 
     /// @param length 
     /// @return 实际接纳的数据量 /字节; 或-1表示出错
-    int bringData(const char* src, int length);
+    int bringData(const void* src, int length);
 
   public:
     /// @brief 线程安全地查看当前有多少数据未发送
