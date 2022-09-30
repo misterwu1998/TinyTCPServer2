@@ -89,8 +89,11 @@ namespace TTCPS2
     // 向线程池追加任务
     EpollEvent _toHandle(dynamic_cast<EpollEvent const&>(toHandle));
     if(! server->tp->addTask([conn, this, _toHandle](){//@ThreadPool线程
-      conn->handle();
-      TTCPS2_LOGGER.trace("@ThreadPool: data from socket {0} been handled.", _toHandle.fd);
+      if(0>conn->handle()){
+        TTCPS2_LOGGER.warn("@ThreadPool: something wrong when handling data from socket {0}.", _toHandle.fd);
+      }else{
+        TTCPS2_LOGGER.trace("@ThreadPool: data from socket {0} been handled.", _toHandle.fd);
+      }
       // 处理数据后，让NetIOReactor负责发送
       this->addPendingTask([conn, this, _toHandle](){//@(当前reactor所在的)网络IO线程
       // this->addTimerTask(TimerTask(false, 1000, [conn, this, _toHandle](){//测试：延迟一秒发送
