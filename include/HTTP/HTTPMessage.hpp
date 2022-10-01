@@ -18,6 +18,7 @@ namespace TTCPS2
     // std::string version;
     std::unordered_multimap<std::string, std::string> header;//严格来讲，HTTP没有禁止header的键重复
     std::shared_ptr<Buffer> body;//body可能是长度不定的chunk
+    std::string filePath;//chunk数据如果很大，需要存放到磁盘，记住文件路径
   };
 
   class HTTPResponse
@@ -27,6 +28,7 @@ namespace TTCPS2
     http_status status;
     std::unordered_multimap<std::string, std::string> header;//严格来讲，HTTP没有禁止header的键重复
     std::shared_ptr<Buffer> body;//body可能是长度不定的chunk
+    std::string filePath;//chunk数据如果很大，需要存放到磁盘，记住文件路径
   };
 
 } // namespace TTCPS2
