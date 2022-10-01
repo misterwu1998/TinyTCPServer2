@@ -338,7 +338,7 @@ struct http_parser_settings {
   http_data_cb on_header_field;
   http_data_cb on_header_value;
   http_cb      on_headers_complete;
-  http_data_cb on_body;
+  http_data_cb on_body;// 对于"Transfer-encoding: chunked"的分块传输模式，每个chunk结束或暂时不再有数据可parse时，这个callback都会被调用。// For chunked Transfer-encoding mode, this functor is called when any chunk is just entirely parsed or when all data passed to http_parser_execute() is just parsed.
   http_cb      on_message_complete;
   /* When on_chunk_header is called, the current chunk length is stored
    * in parser->content_length.
