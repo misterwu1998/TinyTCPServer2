@@ -11,12 +11,20 @@
 namespace TTCPS2
 {
   Buffer::Buffer()
-  : Buffer((LENGTH_PER_RECV>LENGTH_PER_SEND) ? (LENGTH_PER_RECV<<1):(LENGTH_PER_SEND<<1)) {}
+  : Buffer(512) {}
 
   Buffer::Buffer(unsigned int capacity)
   : firstData(0)
   , firstBlank(0) {
-    
+    // 找到恰好不小于capacity的2的次幂
+    this->capacity = 1;
+    while(this->capacity < capacity){
+      (this->capacity) <<= 1;
+    }
+    if(this->capacity > MAX_BUFFER_SIZE){//控制上限
+      this->capacity = MAX_BUFFER_SIZE;
+    }
+    this->data = malloc(this->capacity);
   }
 
   unsigned int Buffer::getLength(){
@@ -38,7 +46,7 @@ namespace TTCPS2
       }else{//还可以扩容
 
         // 目标容量
-        capacity = (expectedLength<<1) + getLength();//在现有数据量的基础上留两倍的expectedLength
+        while(capacity < getLength() + expectedLength) capacity<<=1; // 限制容量取值为2的若干次幂// capacity = (expectedLength<<1) + getLength();//在现有数据量的基础上留两倍的expectedLength
         if(MAX_BUFFER_SIZE<capacity){//目标容量过大
           capacity = MAX_BUFFER_SIZE;
         }
@@ -84,11 +92,29 @@ namespace TTCPS2
   }
 
   long Buffer::pop(unsigned int length){
-    if(length > firstBlank-firstData){//实际没有那么多数据可以弹出
-      length = firstBlank - firstData;
+    if(capacity >= (1<<7) && getLength()*4 <= capacity){//容量不小，但当中有四分之三都是空的
+      // 还要留着的数据挪到头部，然后realloc
+      long ret;
+      if(getLength()<=length){//这次pop会把全部数据都pop掉
+        //不用管数据了
+        ret = getLength();
+        firstBlank = firstData = 0;
+      }else{//这次pop后还剩下部分数据
+        ret = length;
+        ::memmove(data, data+firstData+length, getLength()-length);
+        firstBlank = getLength()-length;
+        firstData = 0;
+      }
+      capacity <<= 1;
+      data = ::realloc(data, capacity);
+      return ret;
+    }else{
+      if(length > firstBlank-firstData){//实际没有那么多数据可以弹出
+        length = firstBlank - firstData;
+      }
+      firstData += length;
+      return length;
     }
-    firstData += length;
-    return length;
   }
 
   Buffer::~Buffer(){
