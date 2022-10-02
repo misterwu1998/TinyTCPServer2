@@ -48,7 +48,7 @@ namespace TTCPS2
     }
 
     // 移出connections; ~TCPConnetion()负责close(FD)
-    {
+    {//先从NetIOReactor的集合移出
       LG lg(m_connections);
       connections.erase(toHandle.getFD());
     }

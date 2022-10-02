@@ -2,6 +2,7 @@
 #include "HTTP/HTTPMessage.hpp"
 #include "util/Buffer.hpp"
 #include "TinyTCPServer2/Logger.hpp"
+#include <sstream>
 
 namespace TTCPS2
 {

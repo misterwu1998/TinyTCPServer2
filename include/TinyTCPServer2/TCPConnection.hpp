@@ -90,6 +90,11 @@ namespace TTCPS2
     int sendToSocket(int length);
   
   public:
+
+    /// @brief 如果当前TCPConnection暂未被丢弃，就返回其共享指针
+    /// @return nullptr，表示当前TCPConnection已经被server和NetIOReactor所丢弃
+    std::shared_ptr<TCPConnection> getSharedPtr_threadSafe();
+
     /// @brief 立即提醒网络IO反应堆可以发送数据（实现方式：让网络IO反应堆立即监听可写事件）
     /// @return 0表示成功; -1表示出错
     int remindNetIOReactor();

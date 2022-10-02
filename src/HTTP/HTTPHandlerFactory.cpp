@@ -1,8 +1,10 @@
+#include <stdlib.h>
 #include "HTTP/HTTPHandlerFactory.hpp"
 #include "HTTP/HTTPHandler.hpp"
 #include "HTTP/HTTPMessage.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 #include "util/Buffer.hpp"
+#include "util/TimerTask.hpp"
 
 namespace TTCPS2
 {
@@ -59,11 +61,26 @@ namespace TTCPS2
     auto h = (HTTPHandler*)(parser->data);
     uint32_t actualLen;
     auto wp = h->requestNow->body->getWritingPtr(length,actualLen);
-    if(actualLen<length){//位置不够了
-      /// TODO: 改道去文件
-    }else{//位置还够
-      
+    if(!h->bodyFileNow.is_open() && actualLen<length){//暂未有文件，且位置不够了
+      auto dir = "./temp/request_data" + h->requestNow->url; 
+      if(dir[dir.length()-1]!='/'){
+        dir.append(1,'/');
+      }
+      h->requestNow->filePath = dir + std::to_string(currentTimeMillis());
+      h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
+
+      // 先写原有的内容再写新内容
+      auto rp = h->requestNow->body->getReadingPtr(h->requestNow->body->getLength(),actualLen);
+      h->bodyFileNow.write((char*)rp, h->requestNow->body->getLength())
+                    .write(at,length);
+      h->requestNow->body->pop(h->requestNow->body->getLength());
+    }else if(h->bodyFileNow.is_open()){//已经有文件
+      h->bodyFileNow.write(at,length);
+    }else{//暂未有文件但位置还够
+      memcpy(wp,at,length);
+      h->requestNow->body->push(length);
     }
+    return 0;
   }
 
   int onChunkHeader(http_parser* parser){
@@ -73,8 +90,13 @@ namespace TTCPS2
   }
 
   int onMessageComplete(http_parser* parser){
-    /// 执行回调，消费掉这个Request
     auto h = (HTTPHandler*)(parser->data);
+
+    if(h->bodyFileNow.is_open()){
+      h->bodyFileNow.close();
+    }
+
+    /// 执行回调，消费掉这个Request
     if(0 >= h->router.count(h->requestNow->method)){//没有注册相应的回调
       /// TODO: 响应404
     }
@@ -82,7 +104,7 @@ namespace TTCPS2
       /// TODO: 响应404
     }
     auto& cb = h->router[h->requestNow->method][h->requestNow->url];
-    if(0>cb(h->requestNow)){//回调报错
+    if(0>cb(std::dynamic_pointer_cast<HTTPHandler,TCPConnection>(h->getSharedPtr_threadSafe()))){//回调报错
       TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when callback() for the HTTP request with method {0} and URL {1}.", http_method_str(h->requestNow->method), h->requestNow->url);
     }
     return 0;

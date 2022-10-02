@@ -75,7 +75,7 @@ namespace TTCPS2
     TTCPS2_LOGGER.info("Acceptor::_readCallback(): client socket {0} will be listened by reactor {1}.", newClient, (roundRobin % reactors.size()));
 
     // 加入连接集合（应当在监听之前就加入，否则NetIOReactor遇到活跃事件时可能无法在unordered_map中找到TCPConection
-    {//server大集合，public
+    {//先加入server大集合，public
       LG lg(server->m_connections);
       server->connections.insert({newClient,newConn});
       if(server->connections.count(newClient))

@@ -222,6 +222,10 @@ namespace TTCPS2
     }
   }
 
+  std::shared_ptr<TCPConnection> TCPConnection::getSharedPtr_threadSafe(){
+    return netIOReactor->getConnection_threadSafe(clientSocket);
+  }
+
   int TCPConnection::remindNetIOReactor(){
     if(netIOReactor->getConnection_threadSafe(clientSocket)){//仍在反应堆内
       auto _clientSocket = clientSocket;
