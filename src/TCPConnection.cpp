@@ -107,18 +107,18 @@ namespace TTCPS2
     TTCPS2_LOGGER.trace("TCPConnection::handle(): echo...");
 
     // 测试：定时任务
-    auto _this = netIOReactor->getConnection_threadSafe(clientSocket);
-    if(_this){
-      addTimerTask(TimerTask(true, 1000, [_this](){
-        if(5!=_this->bringData("shit",5)){
-          TTCPS2_LOGGER.warn("@TimerTask: something wrong when TCPConnection::bringData() of client socket {0}.", _this->clientSocket);
-        }
-        if(0>_this->remindNetIOReactor()){
-          TTCPS2_LOGGER.warn("@TimerTask: something wrong when TCPConnection::remindNetIOReactor of client socket {0}.", _this->clientSocket);
-        }
-        TTCPS2_LOGGER.info("@TimerTask: delayed-sending test passed!");
-      }));
-    }
+    // auto _this = netIOReactor->getConnection_threadSafe(clientSocket);
+    // if(_this){
+    //   addTimerTask(TimerTask(true, 1000, [_this](){
+    //     if(5!=_this->bringData("shit",5)){
+    //       TTCPS2_LOGGER.warn("@TimerTask: something wrong when TCPConnection::bringData() of client socket {0}.", _this->clientSocket);
+    //     }
+    //     if(0>_this->remindNetIOReactor()){
+    //       TTCPS2_LOGGER.warn("@TimerTask: something wrong when TCPConnection::remindNetIOReactor of client socket {0}.", _this->clientSocket);
+    //     }
+    //     TTCPS2_LOGGER.info("@TimerTask: delayed-sending test passed!");
+    //   }));
+    // }
 
     int len;
     char temp[4096];

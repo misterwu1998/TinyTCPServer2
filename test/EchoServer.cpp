@@ -13,7 +13,7 @@ int main(int argc, char const *argv[])
     , 1024*1024*4, 4);
   logger->set_pattern("[%H:%M:%S.%e %z][%n][%l][thread %t] %v");
   logger->set_level(spdlog::level::level_enum::info);
-  logger->flush_on(spdlog::level::level_enum::trace);
+  logger->flush_on(spdlog::level::level_enum::info);
   TTCPS2::Logger::initOrGet(logger);
   TTCPS2::TinyTCPServer2 server("127.0.0.1", 6324, 8, 5
     , std::make_shared<TTCPS2::TCPConnectionFactory>(), &(TTCPS2::ThreadPool::getPool(8)));
