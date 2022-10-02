@@ -12,11 +12,8 @@ namespace TTCPS2
   /// @brief To be inherited.
   class TCPConnectionFactory
   {
-  protected:
+  public:
   
-    friend class Acceptor; 
-    //Acceptor需要向factory索取新TCPConnection
-
     /// @brief 
     /// @param netIOReactor TCPConnection::TCPConnection() <- 新TCPConnection对象会被分发到哪个网络IO反应堆
     /// @param clientSocket TCPConnection::TCPConnection() <- 与客户端通信的socket

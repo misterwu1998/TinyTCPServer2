@@ -60,6 +60,9 @@ namespace TTCPS2
     /// 填入body, 填不进去了就写出到文件
     auto h = (HTTPHandler*)(parser->data);
     uint32_t actualLen;
+    if(!h->requestNow->body){//还未创建Buffer
+      h->requestNow->body = std::make_shared<Buffer>(length);
+    }
     auto wp = h->requestNow->body->getWritingPtr(length,actualLen);
     if(!h->bodyFileNow.is_open() && actualLen<length){//暂未有文件，且位置不够了
       auto dir = "./temp/request_data" + h->requestNow->url; 
@@ -67,13 +70,16 @@ namespace TTCPS2
         dir.append(1,'/');
       }
       h->requestNow->filePath = dir + std::to_string(currentTimeMillis());
+      while(0 == ::access(h->requestNow->filePath.c_str(), F_OK)){//文件已存在
+        h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+      }
       h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
 
       // 先写原有的内容再写新内容
       auto rp = h->requestNow->body->getReadingPtr(h->requestNow->body->getLength(),actualLen);
       h->bodyFileNow.write((char*)rp, h->requestNow->body->getLength())
                     .write(at,length);
-      h->requestNow->body->pop(h->requestNow->body->getLength());
+      h->requestNow->body = nullptr; // 舍弃Buffer // h->requestNow->body->pop(h->requestNow->body->getLength());
     }else if(h->bodyFileNow.is_open()){//已经有文件
       h->bodyFileNow.write(at,length);
     }else{//暂未有文件但位置还够
@@ -97,11 +103,15 @@ namespace TTCPS2
     }
 
     /// 执行回调，消费掉这个Request
-    if(0 >= h->router.count(h->requestNow->method)){//没有注册相应的回调
-      /// TODO: 响应404
-    }
-    if(0 >= h->router[h->requestNow->method].count(h->requestNow->url)){//没有注册相应的回调
-      /// TODO: 响应404
+    if(0 >= h->router.count(h->requestNow->method) || 0 >= h->router[h->requestNow->method].count(h->requestNow->url)){//没有注册相应的回调
+      /// 响应404
+      h->newResponse().setResponse(http_status::HTTP_STATUS_NOT_FOUND)
+                      .setResponse("Server","github.com/misterwu1998/TinyTCPServer2");
+      while(h->responseNow){
+        if(0>h->doRespond()){
+          return -1;
+        }
+      }
     }
     auto& cb = h->router[h->requestNow->method][h->requestNow->url];
     if(0>cb(std::dynamic_pointer_cast<HTTPHandler,TCPConnection>(h->getSharedPtr_threadSafe()))){//回调报错
@@ -123,7 +133,22 @@ namespace TTCPS2
     requestParserSettings.on_message_complete = onMessageComplete;
   }
 
-  int HTTPHandlerFactory::route(http_method method, std::string const& path, std::function<int (std::shared_ptr<HTTPHandler>)> callback){}
+  int HTTPHandlerFactory::route(http_method method, std::string const& path, std::function<int (std::shared_ptr<HTTPHandler>)> callback){
+    auto it = router.find(method);
+    if(router.end() == it){
+      router.insert({method, std::unordered_map<std::string, std::function<int (std::shared_ptr<TTCPS2::HTTPHandler>)>>()});
+      it = router.find(method);
+      assert(it != router.end());
+    }
+    auto iter = it->second.find(path);
+    if(it->second.end() == iter){
+      it->second.insert({path,callback});
+      return 1;
+    }else{
+      iter->second = callback;
+      return 0;
+    }
+  }
 
   std::shared_ptr<TCPConnection> HTTPHandlerFactory::operator()(
       NetIOReactor* netIOReactor

@@ -59,7 +59,7 @@ namespace TTCPS2
     /// @brief 将方法为method，路径为path的请求路由到指定的回调函数
     /// @param method 
     /// @param path 
-    /// @param callback 
+    /// @param callback 收到一个完整的HTTP请求后被调用，负责调用 HTTPHandler::setResponse 及 HTTPHandler::doRespond
     /// @return 1表示回调函数被追加；0表示原有的回调函数被替换；-1表示出错
     int route(http_method method, std::string const& path, std::function<int (std::shared_ptr<HTTPHandler>)> callback);
 
