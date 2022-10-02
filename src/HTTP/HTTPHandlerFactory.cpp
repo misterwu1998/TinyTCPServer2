@@ -1,6 +1,8 @@
 #include "HTTP/HTTPHandlerFactory.hpp"
 #include "HTTP/HTTPHandler.hpp"
 #include "HTTP/HTTPMessage.hpp"
+#include "TinyTCPServer2/Logger.hpp"
+#include "util/Buffer.hpp"
 
 namespace TTCPS2
 {
@@ -9,41 +11,85 @@ namespace TTCPS2
     HTTPHandler* h = (HTTPHandler*) (parser->data);
     h->requestNow = std::make_shared<HTTPRequest>();
     h->requestNow->method = (http_method)(parser->method);
+    return 0;
   }
 
   int onURL(http_parser* parser, const char *at, size_t length){
-    /// TODO: 追补URL（对于同一URL, onURL()可能被多次调用）
+    /// 追补URL（对于同一URL, onURL()可能被多次调用）
+    auto requestNow = ((HTTPHandler*)(parser->data))->requestNow;
+    if(!requestNow){
+      TTCPS2_LOGGER.error("onURL(): HTTPRequest object doesn't exist!");
+      assert(false);
+    }
+    requestNow->url += std::string(at,length);
+    return 0;
   }
 
   int onHeaderField(http_parser* parser, const char *at, size_t length){
-    /// TODO: 新key
+    /// 追补新key的字符串
+    auto h = (HTTPHandler*)(parser->data);
+    if(!h->headerValueNow.empty()){//上一个header键值对还没处理好
+      h->requestNow->header.insert({h->headerKeyNow, h->headerValueNow});
+      h->headerKeyNow.clear();
+      h->headerValueNow.clear();
+    }
+    h->headerKeyNow += std::string(at,length);
+    return 0;
   }
 
   int onHeaderValue(http_parser* parser, const char *at, size_t length){
-    /// TODO: 新value，然后填入incompleteRequestNow的unordered_multimap; 注意Transfer_encoding
+    /// 追补新value
+    auto h = (HTTPHandler*)(parser->data);
+    h->headerValueNow += std::string(at,length);
+    return 0;
+
   }
 
   int onHeadersComplete(http_parser* parser){
-    /// TODO: （暂无）
+    auto h = (HTTPHandler*)(parser->data);
+    if(!h->headerValueNow.empty()){//上一个header键值对还没处理好
+      h->requestNow->header.insert({h->headerKeyNow, h->headerValueNow});
+      h->headerKeyNow.clear();
+      h->headerValueNow.clear();
+    }
   }
 
   int onBody(http_parser* parser, const char *at, size_t length){
-    /// TODO: 填入body
+    /// 填入body, 填不进去了就写出到文件
+    auto h = (HTTPHandler*)(parser->data);
+    uint32_t actualLen;
+    auto wp = h->requestNow->body->getWritingPtr(length,actualLen);
+    if(actualLen<length){//位置不够了
+      /// TODO: 改道去文件
+    }else{//位置还够
+      
+    }
   }
 
   int onChunkHeader(http_parser* parser){
-    /// TODO: 腾位置，腾不出位置就得创建个临时文件写出去
   }
 
   int onChunkComplete(http_parser* parser){
-    /// TODO: 填入纯chunk data（跳过chunk header及换行回车符）
   }
 
   int onMessageComplete(http_parser* parser){
-    /// TODO: 执行回调，消费掉这个Request
+    /// 执行回调，消费掉这个Request
+    auto h = (HTTPHandler*)(parser->data);
+    if(0 >= h->router.count(h->requestNow->method)){//没有注册相应的回调
+      /// TODO: 响应404
+    }
+    if(0 >= h->router[h->requestNow->method].count(h->requestNow->url)){//没有注册相应的回调
+      /// TODO: 响应404
+    }
+    auto& cb = h->router[h->requestNow->method][h->requestNow->url];
+    if(0>cb(h->requestNow)){//回调报错
+      TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when callback() for the HTTP request with method {0} and URL {1}.", http_method_str(h->requestNow->method), h->requestNow->url);
+    }
+    return 0;
   }
 
   HTTPHandlerFactory::HTTPHandlerFactory(){
+    http_parser_settings_init(&requestParserSettings);
     requestParserSettings.on_message_begin = onMessageBegin;
     requestParserSettings.on_url = onURL;
     requestParserSettings.on_header_field = onHeaderField;

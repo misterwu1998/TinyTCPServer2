@@ -24,7 +24,8 @@ namespace TTCPS2
     http_parser requestParser;//.data: 当前HTTPHandler对象的this指针（仅在handle()期间被访问，而handle()期间当前对象不可能被丢弃，因此无需担心this指针失效）
     std::unique_ptr<Buffer> toBeParsed;
     std::shared_ptr<HTTPRequest> requestNow;
-    std::string unValuedHeaderNow;//未确定value的header的key
+    std::string headerKeyNow;
+    std::string headerValueNow;
 
     HTTPHandler(
         NetIOReactor* netIOReactor
