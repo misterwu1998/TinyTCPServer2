@@ -14,7 +14,6 @@ file(GLOB_RECURSE SOURCE_CPP ./src/*.cpp)
 add_library(TinyTCPServer2 SHARED
   ${SOURCE_CPP}
 )
-
 target_link_libraries(TinyTCPServer2 Threads::Threads)
 
 add_executable(EchoServer ./test/EchoServer.cpp)
@@ -22,6 +21,12 @@ add_executable(EchoClient ./test/EchoClient.cpp)
 target_link_directories(EchoServer PUBLIC ./build)
 target_link_directories(EchoClient PUBLIC ./build)
 target_link_libraries(EchoServer TinyTCPServer2 Threads::Threads)
+
+add_library(TinyWebServer SHARED
+  ${SOURCE_CPP}
+)
+target_link_directories(TinyWebServer PUBLIC ./build)
+target_link_libraries(TinyWebServer TinyTCPServer2 Threads::Threads)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

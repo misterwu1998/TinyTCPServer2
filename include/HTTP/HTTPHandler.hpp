@@ -30,7 +30,7 @@ namespace TTCPS2
     std::string headerValueNow;
     std::fstream bodyFileNow;
     std::shared_ptr<HTTPResponse> responseNow;//HTTP/1.1是半双工的，这个response发送完之前，当前TCP连接不会有下一个request发来，所以不需要安排队列
-    uint32_t lenWritten_responseNow;
+    uint32_t respondingStage;//用于标记responseNow写出的进度: 0. 正在写状态行; 1. 正在写header; 2. 正在写空行; 3. 正在写body; 4. 对于chunk模式，正在写最后一个空块
     std::unique_ptr<Buffer> toRespond;
 
     HTTPHandler(
@@ -43,6 +43,8 @@ namespace TTCPS2
             , std::function<int (std::shared_ptr<HTTPHandler>)>>>& router
       , http_parser_settings& requestParserSettings);
     virtual int handle();
+
+    std::shared_ptr<HTTPRequest> getRequestNow();
 
     /// @brief 创建新的 HTTPHandler::responseNow
     /// @return 当前HTTPHandler

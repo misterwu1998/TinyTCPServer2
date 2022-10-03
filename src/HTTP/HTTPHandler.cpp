@@ -2,6 +2,7 @@
 #include "HTTP/HTTPMessage.hpp"
 #include "util/Buffer.hpp"
 #include "TinyTCPServer2/Logger.hpp"
+#include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include <sstream>
 
 namespace TTCPS2
@@ -20,7 +21,7 @@ namespace TTCPS2
   , requestParserSettings(requestParserSettings)
   , toBeParsed(new Buffer(512))
   , toRespond(new Buffer(512))
-  , lenWritten_responseNow(0) {
+  , respondingStage(0) {
     http_parser_init(&requestParser, http_parser_type::HTTP_REQUEST);
     requestParser.data = this;
   }
@@ -47,6 +48,10 @@ namespace TTCPS2
     toRespond->pop(lenParsed);
 
     return 0;
+  }
+
+  std::shared_ptr<HTTPRequest> HTTPHandler::getRequestNow(){
+    return requestNow;
   }
 
   HTTPHandler& HTTPHandler::newResponse(){
@@ -124,12 +129,11 @@ namespace TTCPS2
   long HTTPHandler::doRespond(){
     if(!responseNow) return 0;
     uint32_t count = 0;//这次写多少
-    uint32_t al;
+    uint32_t al,temp;
     void* wp;
     std::string line;
-    
-    // 状态行
-    if(0>=lenWritten_responseNow){//还未写状态行
+
+    if(0==respondingStage){
       line = "HTTP/1.1 " + std::to_string((uint32_t)(responseNow->status)) + http_status_str(responseNow->status) + "\r\n";
       wp = toRespond->getWritingPtr(line.length(),al);
       if(al<line.length()){//位置不够，下次再来
@@ -138,17 +142,30 @@ namespace TTCPS2
       memcpy(wp, line.c_str(), al);
       toRespond->push(al);
       count += al;
-      lenWritten_responseNow += al;
+      respondingStage = 1;
     }
+    if(1==respondingStage){
+      while(true){//尽量发
+        auto it = responseNow->header.begin();
+        if(responseNow->header.end()==it){//没有了
+          break;
+        }//还有
 
-    // header
-    while(true){
-      auto it = responseNow->header.begin();
-      if(responseNow->header.end()==it){//没有了
-        break;
-      }//还有
+        line = it->first + ": " + it->second + "\r\n";
+        wp = toRespond->getWritingPtr(line.length(),al);
+        if(al<line.length()){//位置不够，下次再来
+          return count;
+        }
+        memcpy(wp, line.c_str(), al);
+        toRespond->push(al);
+        count += al;
 
-      line = it->first + ": " + it->second + "\r\n";
+        responseNow->header.erase(it);//写一个扔一个
+      }//写完header了
+      respondingStage = 2;
+    }
+    if(2==respondingStage){
+      line = "\r\n";
       wp = toRespond->getWritingPtr(line.length(),al);
       if(al<line.length()){//位置不够，下次再来
         return count;
@@ -156,65 +173,81 @@ namespace TTCPS2
       memcpy(wp, line.c_str(), al);
       toRespond->push(al);
       count += al;
-      lenWritten_responseNow += al;
-
-      responseNow->header.erase(it);//写一个扔一个
+      respondingStage = 3;
     }
-
-    // 响应体
-    if(responseNow->filePath.empty()){//没文件
-      if(responseNow->body){//有响应体
-        auto rp = responseNow->body->getReadingPtr(responseNow->body->getLength(),al);
-        wp = toRespond->getWritingPtr(responseNow->body->getLength(),al);
-        if(0>=al){//没位置了
+    if(3==respondingStage){
+      if(responseNow->filePath.empty()){//没文件
+        if(responseNow->body){//有响应体
+          if(responseNow->body->getLength()==0){//有响应体但写完了
+            responseNow = nullptr;//丢弃response
+            respondingStage = 0;//复位
+            return count;
+          }
+          auto rp = responseNow->body->getReadingPtr(responseNow->body->getLength(),temp);
+          wp = toRespond->getWritingPtr(responseNow->body->getLength(),al);
+          if(0>=al){//没位置可写了
+            return count;
+          }
+          if(temp<al) al = temp;//实际要写多少
+          ::memcpy(wp,rp,al);
+          toRespond->push(al);
+          responseNow->body->pop(al);
+          count += al;
+          if(responseNow->body->getLength()==0){//有响应体但写完了
+            responseNow = nullptr;//丢弃response
+            respondingStage = 0;//复位
+          }
+          return count;
+        }else{//没响应体
+          responseNow = nullptr;//丢弃response
+          respondingStage = 0;//复位
           return count;
         }
-        ::memcpy(wp,rp,al);
-        toRespond->push(al);
-        responseNow->body->pop(al);
-        count += al;
-        lenWritten_responseNow += al;
-        if(responseNow->body->getLength()==0){//写完了
-          // 复位
-          responseNow = nullptr;
-          lenWritten_responseNow = 0;
+      }else{//有文件
+        if(!bodyFileNow.is_open()){//文件未打开
+          if(0!=::access(responseNow->filePath.c_str(), F_OK)){//文件不能正常访问
+            return -1;
+          }
+          bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
         }
-        return count;
-      }else{//没响应体
-        return count;
-      }
-    }else{//有文件
-      if(bodyFileNow.is_open()){//文件发送到一半
         while(true){//尽量发
-          wp = toRespond->getWritingPtr(responseNow->body->getLength(),al);
+          wp = toRespond->getWritingPtr(LENGTH_PER_SEND,al);
           if(0>=al){//没位置了
             return count;
           }
           bodyFileNow.read((char*)wp,al);
           toRespond->push(bodyFileNow.gcount());
           count += bodyFileNow.gcount();
-          lenWritten_responseNow += bodyFileNow.gcount();
           if(bodyFileNow.eof()){//文件走完了
-
-            // 复位
             bodyFileNow.close();
             responseNow = nullptr;
-            lenWritten_responseNow = 0;
-
+            respondingStage = 4;
             break;
           }
         }
-        return count;
-      }else{//文件未开始发送
-        if(0!=::access(responseNow->filePath.c_str(), F_OK)){//文件不能正常访问
-          return -1;
-        }
-        bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
-        return doRespond();
       }
     }
+    if(4==respondingStage){
+      line = "0\r\n\r\n";
+      wp = toRespond->getWritingPtr(line.length(),al);
+      if(al<line.length()){//位置不够，下次再来
+        return count;
+      }
+      memcpy(wp, line.c_str(), al);
+      toRespond->push(al);
+      count += al;
+      respondingStage = 0;
+      responseNow = nullptr;
+      return count;
+    }
+    return -1;
+
   }
 
-  HTTPHandler::~HTTPHandler(){}
+  HTTPHandler::~HTTPHandler(){
+    if(bodyFileNow.is_open()){
+      bodyFileNow.close();
+    }
+  }
 
 } // namespace TTCPS2
