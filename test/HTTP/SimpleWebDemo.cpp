@@ -29,6 +29,7 @@ int main(int argc, char const *argv[])
              .setResponse("Hello!",7)
              .doRespond();
   });
+
   HTTPSettings->route(http_method::HTTP_GET, "/login.html", [](std::shared_ptr<TTCPS2::HTTPHandler> h)->int{
     h->newResponse()
       .setResponse(http_status::HTTP_STATUS_OK)
@@ -43,6 +44,7 @@ int main(int argc, char const *argv[])
     f.close();
     return h->doRespond();
   });
+
   HTTPSettings->route(http_method::HTTP_GET, "/register.html", [](std::shared_ptr<TTCPS2::HTTPHandler> h)->int{
     h->newResponse()
       .setResponse(http_status::HTTP_STATUS_OK)
@@ -57,6 +59,7 @@ int main(int argc, char const *argv[])
     f.close();
     return h->doRespond();
   });
+  
   TTCPS2::TinyWebServer tws(
       "127.0.0.1", 6324,32,4,HTTPSettings
     , &(TTCPS2::ThreadPool::getPool(4)));
