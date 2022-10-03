@@ -10,9 +10,11 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 file(GLOB_RECURSE SOURCE_CPP ./src/*.cpp)
+file(GLOB_RECURSE SOURCE_C ./src/*.c)
 
 add_library(TinyTCPServer2 SHARED
   ${SOURCE_CPP}
+  ${SOURCE_C}
 )
 target_link_libraries(TinyTCPServer2 Threads::Threads)
 
@@ -24,6 +26,7 @@ target_link_libraries(EchoServer TinyTCPServer2 Threads::Threads)
 
 add_library(TinyWebServer SHARED
   ${SOURCE_CPP}
+  ${SOURCE_C}
 )
 target_link_directories(TinyWebServer PUBLIC ./build)
 target_link_libraries(TinyWebServer TinyTCPServer2 Threads::Threads)
