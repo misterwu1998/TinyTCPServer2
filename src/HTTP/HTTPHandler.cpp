@@ -219,11 +219,15 @@ namespace TTCPS2
         }
       }else{//有文件
         if(!bodyFileNow.is_open()){//文件未打开
-          if(0!=::access(responseNow->filePath.c_str(), F_OK)){//文件不能正常访问
+          // if(0!=::access(responseNow->filePath.c_str(), F_OK)){//文件不能正常访问
+          //   TTCPS2_LOGGER.warn("HTTPHandler::doRespond(): the file {0} can't be accessed.", responseNow->filePath);
+          //   return -1;
+          // }
+          bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
+          if(!bodyFileNow.is_open()){//还是没打开
             TTCPS2_LOGGER.warn("HTTPHandler::doRespond(): the file {0} can't be accessed.", responseNow->filePath);
             return -1;
           }
-          bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
         }
         while(true){//尽量发
           wp = toRespond->getWritingPtr(LENGTH_PER_SEND,al);

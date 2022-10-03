@@ -5,6 +5,7 @@
 #include "TinyTCPServer2/Logger.hpp"
 #include "util/Buffer.hpp"
 #include "util/TimerTask.hpp"
+#include "util/Config.hpp"
 
 namespace TTCPS2
 {
@@ -76,8 +77,18 @@ namespace TTCPS2
         dir.append(1,'/');
       }
       h->requestNow->filePath = dir + std::to_string(currentTimeMillis());
-      while(0 == ::access(h->requestNow->filePath.c_str(), F_OK)){//文件已存在
-        h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+      // while(0 == ::access(h->requestNow->filePath.c_str(), F_OK)){//文件已存在
+      //   h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+      // }
+      while(true){
+        h->bodyFileNow.open(h->requestNow->filePath, std::ios::in | std::ios::binary);
+        if(h->bodyFileNow.is_open()){//说明这个同名文件已存在
+          h->bodyFileNow.close();
+          h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+        }else{
+          h->bodyFileNow.close();
+          break;
+        }
       }
       h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
       TTCPS2_LOGGER.trace("onBody(): temp file is {0}", h->requestNow->filePath);
@@ -116,6 +127,13 @@ namespace TTCPS2
       TTCPS2_LOGGER.info("onMessageComplete(): 404");
       h->newResponse().setResponse(http_status::HTTP_STATUS_NOT_FOUND)
                       .setResponse("Server","github.com/misterwu1998/TinyTCPServer2");
+      auto filepath = loadConfigure()["404"];
+      TTCPS2_LOGGER.trace("onMessageComplete(): resource file of 404 is {0}",filepath);
+      std::fstream f(filepath, std::ios::in);
+      char temp[1024];
+      f.read(temp,1024);
+      h->setResponse(temp, f.gcount());
+      f.close();
       while(h->responseNow){
         if(0>h->doRespond()){
           TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when doRespond().");
