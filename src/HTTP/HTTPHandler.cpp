@@ -24,9 +24,11 @@ namespace TTCPS2
   , respondingStage(0) {
     http_parser_init(&requestParser, http_parser_type::HTTP_REQUEST);
     requestParser.data = this;
+    TTCPS2_LOGGER.trace("HTTPHandler::HTTPHandler() done");
   }
 
   int HTTPHandler::handle(){
+    TTCPS2_LOGGER.trace("HTTPHandler::handle()");
     // 提取一部分数据，交给http_parser进行解析，http_parser解析遇到关键节点时调用回调函数
 
     auto lenUnprocessed = getUnprocessedLength();
@@ -47,6 +49,7 @@ namespace TTCPS2
     lenParsed = bringData(pr,actualLength);
     toRespond->pop(lenParsed);
 
+    TTCPS2_LOGGER.trace("HTTPHandler::handle() done");
     return 0;
   }
 
@@ -70,11 +73,13 @@ namespace TTCPS2
     auto iter = responseNow->header.find(headerKey);
     while(iter!=responseNow->header.end() && iter->first==headerKey){//仍然是同一个key
       if(iter->second==headerValue){//已有这个键值对
+        TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): the header been in Response.");
         return *this;
       }
       ++iter;
     }
     responseNow->header.insert({headerKey,headerValue});
+    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): successfully insert new header.");
     return *this;
   }
 
@@ -87,6 +92,7 @@ namespace TTCPS2
     auto wp = responseNow->body->getWritingPtr(length,al);//这里暂不考虑al!=length的情形，默认bodyData不超过Buffer上限
     memcpy(wp,bodyData,al);
     responseNow->body->push(al);
+    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): bodyData been pushed into the Buffer responseNow->body.");
     
     // 更新"Content-Length"
     auto it = responseNow->header.find("Content-Length");
@@ -95,6 +101,7 @@ namespace TTCPS2
     }else{
       it->second = std::to_string(responseNow->body->getLength());
     }
+    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): Content-Length been updated.");
 
     // 确保非chunked模式
     responseNow->filePath.clear();
@@ -123,6 +130,7 @@ namespace TTCPS2
     }
     responseNow->body = nullptr;//丢弃Buffer
 
+    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): the Response been switched to chunked-data mode.");
     return *this;
   }
 
@@ -142,6 +150,7 @@ namespace TTCPS2
       memcpy(wp, line.c_str(), al);
       toRespond->push(al);
       count += al;
+      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): first line of Response done.");
       respondingStage = 1;
     }
     if(1==respondingStage){
@@ -162,6 +171,7 @@ namespace TTCPS2
 
         responseNow->header.erase(it);//写一个扔一个
       }//写完header了
+      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): headers of Response done.");
       respondingStage = 2;
     }
     if(2==respondingStage){
@@ -173,12 +183,14 @@ namespace TTCPS2
       memcpy(wp, line.c_str(), al);
       toRespond->push(al);
       count += al;
+      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): empty line of Response done.");
       respondingStage = 3;
     }
     if(3==respondingStage){
       if(responseNow->filePath.empty()){//没文件
         if(responseNow->body){//有响应体
           if(responseNow->body->getLength()==0){//有响应体但写完了
+            TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
             responseNow = nullptr;//丢弃response
             respondingStage = 0;//复位
             return count;
@@ -194,11 +206,13 @@ namespace TTCPS2
           responseNow->body->pop(al);
           count += al;
           if(responseNow->body->getLength()==0){//有响应体但写完了
+            TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
             responseNow = nullptr;//丢弃response
             respondingStage = 0;//复位
           }
           return count;
         }else{//没响应体
+          TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
           responseNow = nullptr;//丢弃response
           respondingStage = 0;//复位
           return count;
@@ -206,6 +220,7 @@ namespace TTCPS2
       }else{//有文件
         if(!bodyFileNow.is_open()){//文件未打开
           if(0!=::access(responseNow->filePath.c_str(), F_OK)){//文件不能正常访问
+            TTCPS2_LOGGER.warn("HTTPHandler::doRespond(): the file {0} can't be accessed.", responseNow->filePath);
             return -1;
           }
           bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
@@ -220,6 +235,7 @@ namespace TTCPS2
           count += bodyFileNow.gcount();
           if(bodyFileNow.eof()){//文件走完了
             bodyFileNow.close();
+            TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): the file of current Response done.");
             responseNow = nullptr;
             respondingStage = 4;
             break;
@@ -236,6 +252,7 @@ namespace TTCPS2
       memcpy(wp, line.c_str(), al);
       toRespond->push(al);
       count += al;
+      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
       respondingStage = 0;
       responseNow = nullptr;
       return count;
@@ -248,6 +265,7 @@ namespace TTCPS2
     if(bodyFileNow.is_open()){
       bodyFileNow.close();
     }
+    TTCPS2_LOGGER.trace("HTTPHandler::~HTTPHandler() done");
   }
 
 } // namespace TTCPS2

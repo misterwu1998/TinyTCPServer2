@@ -13,6 +13,7 @@ namespace TTCPS2
     HTTPHandler* h = (HTTPHandler*) (parser->data);
     h->requestNow = std::make_shared<HTTPRequest>();
     h->requestNow->method = (http_method)(parser->method);
+    TTCPS2_LOGGER.trace("onMessageBegin(): method is {0}.", http_method_str((http_method)parser->method));
     return 0;
   }
 
@@ -24,6 +25,7 @@ namespace TTCPS2
       assert(false);
     }
     requestNow->url += std::string(at,length);
+    TTCPS2_LOGGER.trace("onURL(): now, URL is {0}", requestNow->url);
     return 0;
   }
 
@@ -36,6 +38,7 @@ namespace TTCPS2
       h->headerValueNow.clear();
     }
     h->headerKeyNow += std::string(at,length);
+    TTCPS2_LOGGER.trace("onHeaderField(): now, key of the incoming header is {0}", h->headerKeyNow);
     return 0;
   }
 
@@ -43,6 +46,7 @@ namespace TTCPS2
     /// 追补新value
     auto h = (HTTPHandler*)(parser->data);
     h->headerValueNow += std::string(at,length);
+    TTCPS2_LOGGER.trace("onHeaderValue(): now, value of the incoming header is {0}", h->headerValueNow);
     return 0;
 
   }
@@ -54,6 +58,8 @@ namespace TTCPS2
       h->headerKeyNow.clear();
       h->headerValueNow.clear();
     }
+    TTCPS2_LOGGER.trace("onHeadersComplete() done");
+    return 0;
   }
 
   int onBody(http_parser* parser, const char *at, size_t length){
@@ -74,6 +80,7 @@ namespace TTCPS2
         h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
       }
       h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
+      TTCPS2_LOGGER.trace("onBody(): temp file is {0}", h->requestNow->filePath);
 
       // 先写原有的内容再写新内容
       auto rp = h->requestNow->body->getReadingPtr(h->requestNow->body->getLength(),actualLen);
@@ -86,6 +93,7 @@ namespace TTCPS2
       memcpy(wp,at,length);
       h->requestNow->body->push(length);
     }
+    TTCPS2_LOGGER.trace("onBody() done");
     return 0;
   }
 
@@ -105,17 +113,22 @@ namespace TTCPS2
     /// 执行回调，消费掉这个Request
     if(0 >= h->router.count(h->requestNow->method) || 0 >= h->router[h->requestNow->method].count(h->requestNow->url)){//没有注册相应的回调
       /// 响应404
+      TTCPS2_LOGGER.info("onMessageComplete(): 404");
       h->newResponse().setResponse(http_status::HTTP_STATUS_NOT_FOUND)
                       .setResponse("Server","github.com/misterwu1998/TinyTCPServer2");
       while(h->responseNow){
         if(0>h->doRespond()){
+          TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when doRespond().");
           return -1;
         }
       }
-    }
-    auto& cb = h->router[h->requestNow->method][h->requestNow->url];
-    if(0>cb(std::dynamic_pointer_cast<HTTPHandler,TCPConnection>(h->getSharedPtr_threadSafe()))){//回调报错
-      TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when callback() for the HTTP request with method {0} and URL {1}.", http_method_str(h->requestNow->method), h->requestNow->url);
+    }else{//有注册相应的回调
+      TTCPS2_LOGGER.trace("onMessageComplete(): callback registered.");
+      auto& cb = h->router[h->requestNow->method][h->requestNow->url];
+      if(0>cb(std::dynamic_pointer_cast<HTTPHandler,TCPConnection>(h->getSharedPtr_threadSafe()))){//回调报错
+        TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when callback() for the HTTP request with method {0} and URL {1}.", http_method_str(h->requestNow->method), h->requestNow->url);
+        return -1;
+      }
     }
     return 0;
   }
@@ -143,9 +156,11 @@ namespace TTCPS2
     auto iter = it->second.find(path);
     if(it->second.end() == iter){
       it->second.insert({path,callback});
+      TTCPS2_LOGGER.trace("HTTPHandlerFactory::route(): callback of URL {0} been inserted.", path);
       return 1;
     }else{
       iter->second = callback;
+      TTCPS2_LOGGER.trace("HTTPHandlerFactory::route(): callback of URL {0} been modified.", path);
       return 0;
     }
   }

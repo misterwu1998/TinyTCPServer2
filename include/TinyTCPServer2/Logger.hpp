@@ -43,7 +43,7 @@ namespace TTCPS2
 
 } // namespace TTCPS2
 
-#define TTCPS2_SPD_LOGGER (*(TTCPS2::Logger::initOrGet(nullptr).getSpdLogger()))
-#define TTCPS2_LOGGER TTCPS2_SPD_LOGGER
+#define TTCPS2_SPD_LOGGER (*(TTCPS2::Logger::initOrGet(nullptr).getSpdLogger())) //必须在初始化日志器后才使用
+#define TTCPS2_LOGGER TTCPS2_SPD_LOGGER //必须在初始化日志器后才使用
 
 #endif // _Logger_hpp

@@ -109,6 +109,8 @@ namespace TTCPS2
   int EventLoop::_skipWakeupAndDispatch(Event const& toHandle){
     if(eventFD==toHandle.getFD()){
       TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): info of wake-up FD is {0}", toHandle.getInfo());
+      eventfd_t temp;
+      eventfd_read(eventFD, &temp);
       return 0;
     }
     TTCPS2_LOGGER.trace("EventLoop::_skipWakeupAndDispatch(): the event should be dispatched. Its info: {0}", toHandle.getInfo());
