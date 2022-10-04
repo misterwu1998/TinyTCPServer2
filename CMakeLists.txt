@@ -32,10 +32,12 @@ target_link_directories(TinyWebServer PUBLIC ./build)
 target_link_libraries(TinyWebServer TinyTCPServer2 Threads::Threads)
 
 include_directories(/mnt/d/SQLite/usr/local/include/) # 原因：进入SQLite源码目录执行configure时，我指定了prefix=/mnt/d/SQLite/usr/local/
+include_directories(../SQLiter/include/) # https://github.com/misterwu1998/SQLiter
 add_executable(SimpleWebDemo ./test/HTTP/SimpleWebDemo.cpp)
 target_link_directories(SimpleWebDemo PUBLIC ./build/)
 target_link_directories(SimpleWebDemo PUBLIC /mnt/d/SQLite/usr/local/lib/) # 原因：进入SQLite源码目录执行configure时，我指定了prefix=/mnt/d/SQLite/usr/local/
-target_link_libraries(SimpleWebDemo TinyWebServer TinyTCPServer2 Threads::Threads sqlite3)
+target_link_directories(SimpleWebDemo PUBLIC ../SQLiter/build/) # https://github.com/misterwu1998/SQLiter
+target_link_libraries(SimpleWebDemo TinyWebServer TinyTCPServer2 Threads::Threads sqlite3 SQLiter)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
