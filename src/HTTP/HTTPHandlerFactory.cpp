@@ -63,7 +63,7 @@ namespace TTCPS2
     return 0;
   }
 
-  /// TODO: 解析不到POST表单的body咋回事
+  /// TODO: 解析不到POST表单的body咋回事 —— 貌似是因为浏览器发了个HTTP/2的请求，http-parser顶不住？HTTP这部分暂时先这样吧
   int onBody(http_parser* parser, const char *at, size_t length){
     /// 填入body, 填不进去了就写出到文件
     auto h = (HTTPHandler*)(parser->data);
