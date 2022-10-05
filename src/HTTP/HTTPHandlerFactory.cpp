@@ -143,7 +143,12 @@ namespace TTCPS2
     }else{//有注册相应的回调
       TTCPS2_LOGGER.trace("onMessageComplete(): callback registered.");
       auto& cb = h->router[h->requestNow->method][h->requestNow->url];
-      if(0>cb(std::dynamic_pointer_cast<HTTPHandler,TCPConnection>(h->getSharedPtr_threadSafe()))){//回调报错
+      auto p = h->getSharedPtr_threadSafe();
+      if(!p){
+        TTCPS2_LOGGER.warn("onMessageComplete(): current HTTPHandler has been discarded by TCP server.");
+        return -1;
+      }
+      if(0>cb(std::dynamic_pointer_cast<HTTPHandler,TCPConnection>(p))){//回调报错
         TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when callback() for the HTTP request with method {0} and URL {1}.", http_method_str(h->requestNow->method), h->requestNow->url);
         return -1;
       }

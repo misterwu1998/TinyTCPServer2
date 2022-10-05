@@ -5,6 +5,8 @@
 #if !defined(_Buffer_hpp)
 #define _Buffer_hpp
 
+#include <cstdint>
+
 namespace TTCPS2
 {
   /**
