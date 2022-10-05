@@ -56,8 +56,11 @@ namespace TTCPS2
 
   public:
 
-    /// @brief 由数据处理线程调用：takeData()取走数据到指定的内存空间进行处理，处理后bringData()放回
-    /// 缺省实现：echo
+    /// @brief 由数据处理线程调用：takeData()取走数据到指定的内存空间进行处理，处理后bringData()放回。
+    /// 缺省实现：echo。
+    /// 由HTTPHandler、HTTPHandlerFactory出现的问题想到的一个边界case: 线程池线程A在handle()中刚刚完成takeData()时，网络IO反应堆恰好又令当前TCPConnection完成readFromSocket()，并给线程池线程B指派了工作任务，这时候handle()内完全可能有多线程在跑。简而言之，handle()本身并非线程安全的。
+    /// 然而如果盲目给整个代码块上锁，可能导致线程池“饥饿”，例如上述两个线程A、B，假如线程池就它俩线程，那么加锁的情况下其它TCPConnection的任务就都得往后稍稍了。换句话说，我们可能希望一个TCPConnection在同一时刻只能由一条线程池线程来执行handle(), 而给handle()的代码块上锁不能做到这点。
+    /// TODO: 想个办法保证一个TCPConnection在同一时刻只由一条线程池线程来执行handle()
     /// @return -1表示出错
     virtual int handle();
     
