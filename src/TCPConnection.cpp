@@ -21,7 +21,8 @@ namespace TTCPS2
   ) : netIOReactor(netIOReactor)
     , clientSocket(clientSocket)
     , rb(new Buffer(LENGTH_PER_RECV<<1))
-    , wb(new Buffer(LENGTH_PER_SEND<<1)){
+    , wb(new Buffer(LENGTH_PER_SEND<<1))
+    , working(false){
     TTCPS2_LOGGER.trace("TCPConnection::TCPConnection()");
   }
 
@@ -100,6 +101,16 @@ namespace TTCPS2
     TTCPS2_LOGGER.trace("TCPConnection::takeData(): {0} bytes have been taken from reading Buffer of socket {1}.", actualLength,clientSocket);
     return actualLength;
 
+  }
+
+  bool TCPConnection::compareAndSwap_working(bool v0, bool v1){
+    LG lg(m_working);
+    if(working==v0){
+      working = v1;
+      return v0;
+    }else{
+      return working;
+    }
   }
 
   int TCPConnection::handle(){
