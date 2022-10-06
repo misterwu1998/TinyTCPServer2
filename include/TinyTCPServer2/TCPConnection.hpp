@@ -26,6 +26,10 @@ namespace TTCPS2
     std::unique_ptr<Buffer> rb;
     std::mutex m_rb;
 
+    // 标记当前是否有线程池线程在执行handle()
+    bool working;
+    std::mutex m_working;
+
     // 写缓冲（经过处理，待发送的数据的缓冲区）
     std::unique_ptr<Buffer> wb;
     std::mutex m_wb;
@@ -48,16 +52,27 @@ namespace TTCPS2
     int getUnprocessedLength();
 
   protected:
+
     /// @brief 由数据处理线程调用，线程安全地取走length字节数据放到dst
     /// @param length 
     /// @param dst 
     /// @return 实际取走的数据量 /字节; 或-1表示出错
     int takeData(int length, void* dst);
 
+    /// @brief 对于当前是否有线程池线程在执行handle()的布尔flag的CAS原子操作，如果当前flag等于v0，就为其赋值v1。
+    /// v0,v1 = false,true 时，这次CAS操作用于争抢执行handle()的唯一的名额，返回值为false说明争抢成功；
+    /// v0,v1 = true,false 时，这次CAS错做用于归还handle()的执行名额，返回值为true说明归还成功，为false说明程序出错；
+    /// v0,v1 的其它取值无意义。
+    /// 线程池线程A在handle()中刚刚完成takeData()时，网络IO反应堆恰好又令当前TCPConnection完成readFromSocket()，并给线程池线程B指派了工作任务，这时候handle()内完全可能有多线程在跑。简而言之，handle()本身并非线程安全的。
+    /// 然而如果盲目给整个代码块上锁，可能导致线程池“饥饿”，例如上述两个线程A、B，假如线程池就它俩线程，那么加锁的情况下其它TCPConnection的任务就都得往后稍稍了。换句话说，我们只是希望一个TCPConnection在同一时刻只能由一条线程池线程来执行其handle()。
+    /// 因此需要立working这个flag，需要CAS操作。
+    /// @return flag原来的值
+    bool compareAndSwap_working(bool v0, bool v1);
+
   public:
 
-    /// @brief 由数据处理线程调用：takeData()取走数据到指定的内存空间进行处理，处理后bringData()放回
-    /// 缺省实现：echo
+    /// @brief 由数据处理线程调用：takeData()取走数据到指定的内存空间进行处理，处理后bringData()放回。
+    /// 缺省实现：echo。
     /// @return -1表示出错
     virtual int handle();
     
