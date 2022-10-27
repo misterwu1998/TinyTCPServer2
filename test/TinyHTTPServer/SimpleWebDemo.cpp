@@ -1,7 +1,6 @@
-#include "HTTP/TinyWebServer.hpp"
-#include "HTTP/HTTPHandlerFactory.hpp"
-#include "HTTP/HTTPHandler.hpp"
-#include "HTTP/HTTPMessage.hpp"
+#include "TinyHTTPServer/TinyWebServer.hpp"
+#include "TinyHTTPServer/HTTPHandlerFactory.hpp"
+#include "TinyHTTPServer/HTTPHandler.hpp"
 #include "util/ThreadPool.hpp"
 #include "util/Buffer.hpp"
 #include <iostream>

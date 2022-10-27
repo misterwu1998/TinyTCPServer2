@@ -1,5 +1,5 @@
-#include "HTTP/TinyWebServer.hpp"
-#include "HTTP/HTTPHandlerFactory.hpp"
+#include "TinyHTTPServer/TinyWebServer.hpp"
+#include "TinyHTTPServer/HTTPHandlerFactory.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 
 namespace TTCPS2

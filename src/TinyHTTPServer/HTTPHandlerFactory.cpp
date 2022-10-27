@@ -1,7 +1,7 @@
 #include <stdlib.h>
-#include "HTTP/HTTPHandlerFactory.hpp"
-#include "HTTP/HTTPHandler.hpp"
-#include "HTTP/HTTPMessage.hpp"
+#include "TinyHTTPServer/HTTPHandlerFactory.hpp"
+#include "TinyHTTPServer/HTTPHandler.hpp"
+#include "TinyHTTPServer/HTTPMessage.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 #include "util/Buffer.hpp"
 #include "util/TimerTask.hpp"

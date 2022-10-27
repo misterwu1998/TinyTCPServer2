@@ -31,7 +31,7 @@ add_library(TinyWebServer SHARED
 target_link_directories(TinyWebServer PUBLIC ./build)
 target_link_libraries(TinyWebServer TinyTCPServer2 Threads::Threads)
 
-add_executable(SimpleWebDemo ./test/HTTP/SimpleWebDemo.cpp)
+add_executable(SimpleWebDemo ./test/TinyHTTPServer/SimpleWebDemo.cpp)
 target_link_directories(SimpleWebDemo PUBLIC ./build/)
 target_link_libraries(SimpleWebDemo TinyWebServer TinyTCPServer2 Threads::Threads)
 
