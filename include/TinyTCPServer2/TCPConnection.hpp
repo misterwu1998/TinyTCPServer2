@@ -59,7 +59,7 @@ namespace TTCPS2
     /// @return 实际取走的数据量 /字节; 或-1表示出错
     int takeData(int length, void* dst);
 
-    /// @brief 对于当前是否有线程池线程在执行handle()的布尔flag的CAS原子操作，如果当前flag等于v0，就为其赋值v1。
+    /// @brief 对于当前是否有线程池线程在执行handle()的布尔flag的CAS“原子”操作，如果当前flag等于v0，就为其赋值v1。
     /// v0,v1 = false,true 时，这次CAS操作用于争抢执行handle()的唯一的名额，返回值为false说明争抢成功；
     /// v0,v1 = true,false 时，这次CAS错做用于归还handle()的执行名额，返回值为true说明归还成功，为false说明程序出错；
     /// v0,v1 的其它取值无意义。

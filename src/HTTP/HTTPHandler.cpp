@@ -28,6 +28,11 @@ namespace TTCPS2
   }
 
   int HTTPHandler::handle(){
+
+    if(TCPConnection::compareAndSwap_working(false,true)){//没能抢到名额
+      return 0;
+    }
+
     TTCPS2_LOGGER.trace("HTTPHandler::handle()");
     // 提取一部分数据，交给http_parser进行解析，http_parser解析遇到关键节点时调用回调函数
 
@@ -50,6 +55,8 @@ namespace TTCPS2
     toRespond->pop(lenParsed);
 
     TTCPS2_LOGGER.trace("HTTPHandler::handle() done");
+
+    compareAndSwap_working(true,false);//归还执行名额
     return 0;
   }
 
