@@ -1,5 +1,5 @@
-#include "HTTP/HTTPHandler.hpp"
-#include "HTTP/HTTPMessage.hpp"
+#include "TinyHTTPServer/HTTPHandler.hpp"
+#include "TinyHTTPServer/HTTPMessage.hpp"
 #include "util/Buffer.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
@@ -149,7 +149,7 @@ namespace TTCPS2
     std::string line;
 
     if(0==respondingStage){
-      line = "HTTP/1.1 " + std::to_string((uint32_t)(responseNow->status)) + http_status_str(responseNow->status) + "\r\n";
+      line = "TinyHTTPServer/1.1 " + std::to_string((uint32_t)(responseNow->status)) + http_status_str(responseNow->status) + "\r\n";
       wp = toRespond->getWritingPtr(line.length(),al);
       if(al<line.length()){//位置不够，下次再来
         return count;
