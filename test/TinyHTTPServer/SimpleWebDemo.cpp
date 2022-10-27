@@ -1,4 +1,4 @@
-#include "TinyHTTPServer/TinyWebServer.hpp"
+#include "TinyHTTPServer/TinyHTTPServer.hpp"
 #include "TinyHTTPServer/HTTPHandlerFactory.hpp"
 #include "TinyHTTPServer/HTTPHandler.hpp"
 #include "util/ThreadPool.hpp"
@@ -143,7 +143,7 @@ int main(int argc, char const *argv[])
     return 0;
   });
   
-  TTCPS2::TinyWebServer tws(
+  TTCPS2::TinyHTTPServer tws(
       "127.0.0.1", 6324,32,4,HTTPSettings
     , &(TTCPS2::ThreadPool::getPool(1)));
   tws.run();

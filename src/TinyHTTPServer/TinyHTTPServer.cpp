@@ -1,10 +1,10 @@
-#include "TinyHTTPServer/TinyWebServer.hpp"
+#include "TinyHTTPServer/TinyHTTPServer.hpp"
 #include "TinyHTTPServer/HTTPHandlerFactory.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 
 namespace TTCPS2
 {
-  TinyWebServer::TinyWebServer(
+  TinyHTTPServer::TinyHTTPServer(
       const char* ip
     , unsigned short port 
     , unsigned int listenSize
@@ -16,11 +16,11 @@ namespace TTCPS2
         , std::static_pointer_cast<TCPConnectionFactory,HTTPHandlerFactory>(HTTPSettings)
         , tp)) {}
 
-  int TinyWebServer::run(){
+  int TinyHTTPServer::run(){
     return this->tcpServer->run();
   }
 
-  int TinyWebServer::shutdown(){
+  int TinyHTTPServer::shutdown(){
     return this->tcpServer->shutdown();
   }
 
