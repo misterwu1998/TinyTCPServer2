@@ -9,11 +9,11 @@ namespace TTCPS2
   class HTTPHandlerFactory;
   class ThreadPool;
 
-  class TinyWebServer
+  class TinyHTTPServer
   {
   public:
     std::shared_ptr<TinyTCPServer2> tcpServer;
-    TinyWebServer(
+    TinyHTTPServer(
         const char* ip
       , unsigned short port 
       , unsigned int listenSize
