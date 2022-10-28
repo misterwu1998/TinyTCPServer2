@@ -11,7 +11,7 @@ namespace TTCPS2
     , unsigned int nNetIOReactors
     , std::shared_ptr<HTTPHandlerFactory> const& HTTPSettings
     , ThreadPool* const tp //线程池是单例
-  ) : tcpServer(std::make_shared<TinyTCPServer2>(
+  ) : tcpServer(new TinyTCPServer2(
           ip,port,listenSize,nNetIOReactors
         , std::static_pointer_cast<TCPConnectionFactory,HTTPHandlerFactory>(HTTPSettings)
         , tp)) {}
@@ -22,6 +22,10 @@ namespace TTCPS2
 
   int TinyHTTPServer::shutdown(){
     return this->tcpServer->shutdown();
+  }
+
+  TinyHTTPServer::~TinyHTTPServer(){
+    delete tcpServer;
   }
 
 } // namespace TTCPS2

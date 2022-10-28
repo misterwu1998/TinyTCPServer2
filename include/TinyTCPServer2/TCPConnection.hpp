@@ -5,6 +5,8 @@
 #include <memory>
 #include <mutex>
 
+struct sockaddr_in;
+
 namespace TTCPS2
 {
   class NetIOReactor;
@@ -117,7 +119,7 @@ namespace TTCPS2
     /// @brief 获取对方的IPv4地址、端口
     /// @param addr 
     /// @return 0表示成功；-1表示TCP连接已断开；-2表示其它错误
-    int getClientAddress(sockaddr_in& addr) const;
+    int getClientAddress(::sockaddr_in& addr) const;
 
   public:
     virtual ~TCPConnection();

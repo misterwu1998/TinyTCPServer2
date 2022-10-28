@@ -258,7 +258,7 @@ namespace TTCPS2
     }
   }
 
-  int TCPConnection::getClientAddress(sockaddr_in& addr) const{
+  int TCPConnection::getClientAddress(::sockaddr_in& addr) const{
     socklen_t len = sizeof(addr);
     int ret = ::getpeername(this->clientSocket, (sockaddr*) &addr, &len);
     if(0>ret){
