@@ -11,8 +11,9 @@ namespace TTCPS2
 
   class TinyHTTPServer
   {
+  private:
+    TinyTCPServer2* tcpServer;
   public:
-    std::shared_ptr<TinyTCPServer2> tcpServer;
     TinyHTTPServer(
         const char* ip
       , unsigned short port 
@@ -23,6 +24,7 @@ namespace TTCPS2
     );
     int run();
     int shutdown();
+    virtual ~TinyHTTPServer();
         
   };
   
