@@ -258,6 +258,22 @@ namespace TTCPS2
     }
   }
 
+  int TCPConnection::getClientAddress(sockaddr_in& addr) const{
+    socklen_t len = sizeof(addr);
+    int ret = ::getpeername(this->clientSocket, (sockaddr*) &addr, &len);
+    if(0>ret){
+      if(errno==ENOTCONN){
+        TTCPS2_LOGGER.warn("TCPConnection::getClientAddress(): the connection to client socket {0} is dropped.", clientSocket);
+        return -1;
+      }else{
+        TTCPS2_LOGGER.warn("TCPConnection::getClientAddress(): something wrong when getpeername(client socket {0}).", clientSocket);
+        return -2;
+      }
+    }else{
+      return 0;
+    }
+  }
+
   TCPConnection::~TCPConnection(){
     TTCPS2_LOGGER.trace("TCPConnection::~TCPConnection");
     // 关闭socket
