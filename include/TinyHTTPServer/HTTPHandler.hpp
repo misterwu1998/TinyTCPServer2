@@ -13,7 +13,17 @@ namespace TTCPS2
 
   class HTTPHandler : virtual public TCPConnection
   {
-  public:
+  protected:
+  
+    friend int onMessageBegin(http_parser* parser);
+    friend int onURL(http_parser* parser, const char *at, size_t length);
+    friend int onHeaderField(http_parser* parser, const char *at, size_t length);
+    friend int onHeaderValue(http_parser* parser, const char *at, size_t length);
+    friend int onHeadersComplete(http_parser* parser);
+    friend int onBody(http_parser* parser, const char *at, size_t length);
+    friend int onChunkHeader(http_parser* parser);
+    friend int onChunkComplete(http_parser* parser);
+    friend int onMessageComplete(http_parser* parser);
 
     /// @brief <请求方法, <路径, 回调函数>>
     std::unordered_map<
@@ -32,6 +42,8 @@ namespace TTCPS2
     std::shared_ptr<HTTPResponse> responseNow;//TinyHTTPServer/1.1是半双工的，这个response发送完之前，当前TCP连接不会有下一个request发来，所以不需要安排队列
     uint32_t respondingStage;//用于标记responseNow写出的进度: 0. 正在写状态行; 1. 正在写header; 2. 正在写空行; 3. 正在写body; 4. 对于chunk模式，正在写最后一个空块
     std::unique_ptr<Buffer> toRespond;//当前正要发送的HTTP Response数据
+
+  public:
 
     HTTPHandler(
         NetIOReactor* netIOReactor

@@ -43,7 +43,7 @@ namespace TTCPS2
 
   class HTTPHandlerFactory : virtual public TCPConnectionFactory
   {
-  public:
+  protected:
 
     /// @brief <请求方法, <路径, 回调函数>>
     std::unordered_map<
@@ -53,6 +53,8 @@ namespace TTCPS2
           , std::function<int (std::shared_ptr<HTTPHandler>)>>> router;
 
     http_parser_settings requestParserSettings;
+
+  public:
 
     HTTPHandlerFactory();
 
