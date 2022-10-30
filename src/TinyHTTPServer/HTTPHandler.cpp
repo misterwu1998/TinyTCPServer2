@@ -141,7 +141,7 @@ namespace TTCPS2
     return *this;
   }
 
-  uint64_t HTTPHandler::doRespond(){
+  int64_t HTTPHandler::doRespond(){
     if(!responseNow) return 0;
     uint32_t count = 0;//这次写多少
     uint32_t al,temp;

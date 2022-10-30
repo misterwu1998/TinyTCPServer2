@@ -88,7 +88,7 @@ namespace TTCPS2
 
     /// @brief 响应完成后，向发送缓冲区写 HTTPHandler::responseNow; HTTPHandler::responseNow 被写完时将被置空
     /// @return 正整数表示本次写的数据量 /字节; 0表示当前HTTPResponse已写完，或当前没有HTTPResponse需要写，或发送缓冲区暂时不能追加数据; -1表示出错
-    uint64_t doRespond();
+    int64_t doRespond();
 
     virtual ~HTTPHandler();
     
