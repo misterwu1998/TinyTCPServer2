@@ -62,6 +62,8 @@ namespace TTCPS2
     /// @return 当前HTTPHandler
     HTTPHandler& newResponse();
 
+    std::shared_ptr<HTTPResponse> getResponseNow();
+
     /// @brief 设置 HTTPHandler::responseNow 的status
     /// @param status 
     /// @return 当前HTTPHandler

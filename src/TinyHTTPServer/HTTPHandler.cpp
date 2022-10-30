@@ -60,14 +60,14 @@ namespace TTCPS2
     return 0;
   }
 
-  std::shared_ptr<HTTPRequest> HTTPHandler::getRequestNow(){
-    return requestNow;
-  }
+  std::shared_ptr<HTTPRequest> HTTPHandler::getRequestNow(){    return requestNow;  }
 
   HTTPHandler& HTTPHandler::newResponse(){
     responseNow = std::make_shared<HTTPResponse>();
     return *this;
   }
+
+  std::shared_ptr<HTTPResponse> HTTPHandler::getResponseNow(){    return responseNow;  }
 
   HTTPHandler& HTTPHandler::setResponse(http_status status){
     if(!responseNow) newResponse();
