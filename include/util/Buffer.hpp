@@ -44,9 +44,9 @@ namespace TTCPS2
     /**
      * @brief 标记新增数据量; 调用getWritingPtr()并拷贝数据之后，标记才是有意义的
      * @param length 
-     * @return uint64_t 实际被标记的新增数据量; 或-1表示出错
+     * @return int64_t 实际被标记的新增数据量; 或-1表示出错
      */
-    uint64_t push(unsigned int length);
+    int64_t push(unsigned int length);
 
     /**
      * @brief 暴露未读数据的地址
@@ -59,9 +59,9 @@ namespace TTCPS2
     /**
      * @brief 丢弃队头数据
      * @param length 
-     * @return uint64_t 实际被丢弃的数据量; 或-1表示出错
+     * @return int64_t 实际被丢弃的数据量; 或-1表示出错
      */
-    uint64_t pop(unsigned int length);
+    int64_t pop(unsigned int length);
 
     virtual ~Buffer();
 

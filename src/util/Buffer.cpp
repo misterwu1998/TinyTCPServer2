@@ -80,7 +80,7 @@ namespace TTCPS2
 
   }
 
-  uint64_t Buffer::push(unsigned int length){
+  int64_t Buffer::push(unsigned int length){
     if(length > capacity-firstBlank){//右侧实际没有那么多空间可被标记
       length = capacity-firstBlank;
     }
@@ -93,7 +93,7 @@ namespace TTCPS2
     return data+firstData;
   }
 
-  uint64_t Buffer::pop(unsigned int length){
+  int64_t Buffer::pop(unsigned int length){
     if(capacity >= (1<<7) && getLength()*4 <= capacity){//容量不小，但当中有四分之三都是空的
       // 还要留着的数据挪到头部，然后realloc
       uint64_t ret;
