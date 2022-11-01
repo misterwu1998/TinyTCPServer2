@@ -3,6 +3,7 @@
 
 #include <memory>
 #include "spdlog/spdlog.h"
+#include "spdlog/sinks/rotating_file_sink.h"
 
 namespace TTCPS2
 {
@@ -10,14 +11,19 @@ namespace TTCPS2
   {
   private:
 
-      // 其它成员 ↓
       std::shared_ptr<spdlog::logger> spdLogger;
-      // 其它成员 ↑
 
       Logger(std::shared_ptr<spdlog::logger> spdLogger){
-        assert(spdLogger!=nullptr);
-        // assert(typeid(*(spdLogger.get()))==typeid(spdlog::logger));
-        this->spdLogger = spdLogger;
+        if(spdLogger)        this->spdLogger = spdLogger;
+        else{
+          this->spdLogger = spdlog::rotating_logger_mt(
+              "default-log"
+            , "./temp/log/log"
+            , 1024*1024*4, 4);
+          this->spdLogger->set_pattern("[%H:%M:%S.%e %z][%n][%l][thread %t] %v");
+          this->spdLogger->set_level(spdlog::level::level_enum::info);
+          this->spdLogger->flush_on(spdlog::level::level_enum::info);
+        }
       }
       Logger(Logger const& another){}
       Logger& operator=(Logger const& another){}
@@ -25,25 +31,19 @@ namespace TTCPS2
 
   public:
 
-      // 其它成员 ↓
-      std::shared_ptr<spdlog::logger> getSpdLogger() const{
-        return spdLogger;
-      }
-      // 其它成员 ↑
-
       /// @brief Logger是全局单例，初始化或获取此单例
-      /// @param spdLogger 指定logger，仅首次调用当前函数时有作用，此后提供nullptr即可；常用：spdlog::rotating_logger_mt<spdlog::async_factory>("TinyTCPServer2.logger","./.log/",4*1024*1024,4); 其它logger参见spdlog的文档
-      /// @return 单例Logger
-      static Logger& initOrGet(std::shared_ptr<spdlog::logger> spdLogger){
+      /// @param spdLogger 指定logger，仅首次调用当前函数时有作用，此后缺省或提供nullptr即可；缺省：spdlog::rotating_logger_mt<spdlog::async_factory>("TinyTCPServer2.logger","./.log/",4*1024*1024,4); 其它logger参见spdlog的文档
+      /// @return 直接返回spdLogger
+      static std::shared_ptr<spdlog::logger> initOrGet(std::shared_ptr<spdlog::logger> spdLogger = nullptr){
           static Logger instance(spdLogger);
-          return instance;
+          return instance.spdLogger;
       }
 
   };
 
 } // namespace TTCPS2
 
-#define TTCPS2_SPD_LOGGER (*(TTCPS2::Logger::initOrGet(nullptr).getSpdLogger())) //必须在初始化日志器后才使用
-#define TTCPS2_LOGGER TTCPS2_SPD_LOGGER //必须在初始化日志器后才使用
+#define TTCPS2_SPD_LOGGER (*(TTCPS2::Logger::initOrGet())) 
+#define TTCPS2_LOGGER TTCPS2_SPD_LOGGER 
 
 #endif // _Logger_hpp
