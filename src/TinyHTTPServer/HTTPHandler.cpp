@@ -143,6 +143,14 @@ namespace TTCPS2
 
   int64_t HTTPHandler::doRespond(){
     if(!responseNow) return 0;
+
+    if(1>respondingStage
+    && responseNow->body 
+    && 0<responseNow->body->getLength() 
+    && 0>responseNow->header.count("Content-Length")){//需要，但还没有content-length
+      responseNow->header.insert({"Content-Length", std::to_string(responseNow->body->getLength())});
+    }
+    
     uint32_t count = 0;//这次写多少
     uint32_t al,temp;
     void* wp;
