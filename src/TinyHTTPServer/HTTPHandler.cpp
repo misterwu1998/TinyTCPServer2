@@ -47,7 +47,7 @@ namespace TTCPS2
     toBeParsed->push(ret);
 
     const void* pr = toBeParsed->getReadingPtr(toBeParsed->getLength(), actualLength);
-    size_t lenParsed = http_parser_execute(&requestParser, &requestParserSettings, (const char*)pr, actualLength);
+    size_t lenParsed = http_parser_execute(&requestParser, &requestParserSettings, (const char*)pr, actualLength);//HTTPHandler其它的成员函数的调用，也就是服务的逻辑，实际上都发生在回调函数里边
     toBeParsed->pop(lenParsed);
 
     pr = toRespond->getReadingPtr(toRespond->getLength(), actualLength);
