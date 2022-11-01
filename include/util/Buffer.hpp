@@ -69,4 +69,18 @@ namespace TTCPS2
   
 } // namespace TTCPS2
 
+#include <iostream>
+
+/// @brief 把输入流中的数据全挪过来
+/// @param i 
+/// @param b 
+/// @return i（如果未能全部读取，i中就还有数据）
+std::istream& operator>>(std::istream& i, TTCPS2::Buffer& b);
+
+/// @brief 把数据全部交给输出流
+/// @param o 
+/// @param b （如果未能全部输出，b中就还有数据）
+/// @return o
+std::ostream& operator<<(std::ostream& o, TTCPS2::Buffer& b);
+  
 #endif // _Buffer_hpp

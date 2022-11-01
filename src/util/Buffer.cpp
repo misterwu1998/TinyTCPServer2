@@ -124,6 +124,24 @@ namespace TTCPS2
     free(data);
   }
 
-} // namespace TTCPS
+} // namespace TTCPS2
+
+std::istream& operator>>(std::istream& i, TTCPS2::Buffer& b){
+  uint32_t l; void* wp;
+  while(!i.eof()){
+    wp = b.getWritingPtr(512,l);
+    if(l<1) return i;  
+    i.read((char*)wp,l);
+    b.push(i.gcount());
+  }
+  return i;
+}
+
+std::ostream& operator<<(std::ostream& o, TTCPS2::Buffer& b){
+  uint32_t l; auto rp = b.getReadingPtr(b.getLength(), l);
+  o.write((const char*)rp,l);
+  b.pop(l);
+  return o;
+}
 
 #endif
