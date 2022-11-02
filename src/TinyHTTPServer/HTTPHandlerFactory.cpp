@@ -110,9 +110,11 @@ namespace TTCPS2
   }
 
   int onChunkHeader(http_parser* parser){
+    return 0;
   }
 
   int onChunkComplete(http_parser* parser){
+    return 0;
   }
 
   int onMessageComplete(http_parser* parser){
