@@ -64,6 +64,7 @@ namespace TTCPS2
 
   HTTPHandler& HTTPHandler::newResponse(){
     responseNow = std::make_shared<HTTPResponse>();
+    respondingStage = 0;
     return *this;
   }
 
