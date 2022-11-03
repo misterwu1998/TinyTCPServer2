@@ -65,48 +65,83 @@ namespace TTCPS2
 
   /// TODO: 解析不到POST表单的body咋回事 —— 貌似是因为浏览器发了个HTTP/2的请求，http-parser顶不住？HTTP这部分暂时先这样吧
   int onBody(http_parser* parser, const char *at, size_t length){
-    /// 填入body, 填不进去了就写出到文件
     auto h = (HTTPHandler*)(parser->data);
-    uint32_t actualLen;
-    if(!h->requestNow->body){//还未创建Buffer
-      h->requestNow->body = std::make_shared<Buffer>(length);
-    }
-    auto wp = h->requestNow->body->getWritingPtr(length,actualLen);
-    if(!h->bodyFileNow.is_open() && actualLen<length){//暂未有文件，且位置不够了
-      auto dir = "./temp/request_data" + h->requestNow->url; 
-      if(dir[dir.length()-1]!='/'){
-        dir.append(1,'/');
-      }
-      h->requestNow->filePath = dir + std::to_string(currentTimeMillis());
-      // while(0 == ::access(h->requestNow->filePath.c_str(), F_OK)){//文件已存在
-      //   h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
-      // }
-      while(true){
-        h->bodyFileNow.open(h->requestNow->filePath, std::ios::in | std::ios::binary);
-        if(h->bodyFileNow.is_open()){//说明这个同名文件已存在
-          h->bodyFileNow.close();
-          h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
-        }else{
-          h->bodyFileNow.close();
-          break;
+    auto it = h->requestNow->header.find("Transfer-Encoding");
+    if(it!=h->requestNow->header.end() && it->second.find("chunked")!=std::string::npos){//是分块模式
+      if(h->bodyFileNow.is_open()==false){//暂未有文件
+        auto dir = "./temp/request_data" + h->requestNow->url; 
+        if(dir[dir.length()-1]!='/'){
+          dir.append(1,'/');
         }
+        h->requestNow->filePath = dir + std::to_string(currentTimeMillis());
+        while(true){//循环直到文件名不重复
+          h->bodyFileNow.open(h->requestNow->filePath, std::ios::in | std::ios::binary);
+          if(h->bodyFileNow.is_open()){//说明这个同名文件已存在
+            h->bodyFileNow.close();
+            h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+          }else{
+            h->bodyFileNow.close();
+            break;
+          }
+        }
+        h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
+        TTCPS2_LOGGER.trace("onBody(): temp file is {0}", h->requestNow->filePath);
       }
-      h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
-      TTCPS2_LOGGER.trace("onBody(): temp file is {0}", h->requestNow->filePath);
-
-      // 先写原有的内容再写新内容
-      auto rp = h->requestNow->body->getReadingPtr(h->requestNow->body->getLength(),actualLen);
-      h->bodyFileNow.write((char*)rp, h->requestNow->body->getLength())
-                    .write(at,length);
-      h->requestNow->body = nullptr; // 舍弃Buffer // h->requestNow->body->pop(h->requestNow->body->getLength());
-    }else if(h->bodyFileNow.is_open()){//已经有文件
       h->bodyFileNow.write(at,length);
-    }else{//暂未有文件但位置还够
+    }else{//不是分块模式
+      if(!h->requestNow->body){//还未创建Buffer
+        h->requestNow->body = std::make_shared<Buffer>(length);
+      }
+      uint32_t al; auto wp = h->requestNow->body->getWritingPtr(length,al);
       memcpy(wp,at,length);
       h->requestNow->body->push(length);
     }
     TTCPS2_LOGGER.trace("onBody() done");
     return 0;
+
+    if(false){/// 填入body, 填不进去了就写出到文件
+      auto h = (HTTPHandler*)(parser->data);
+      uint32_t actualLen;
+      if(!h->requestNow->body){//还未创建Buffer
+        h->requestNow->body = std::make_shared<Buffer>(length);
+      }
+      auto wp = h->requestNow->body->getWritingPtr(length,actualLen);
+      if(!h->bodyFileNow.is_open() && actualLen<length){//暂未有文件，且位置不够了
+        auto dir = "./temp/request_data" + h->requestNow->url; 
+        if(dir[dir.length()-1]!='/'){
+          dir.append(1,'/');
+        }
+        h->requestNow->filePath = dir + std::to_string(currentTimeMillis());
+        // while(0 == ::access(h->requestNow->filePath.c_str(), F_OK)){//文件已存在
+        //   h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+        // }
+        while(true){
+          h->bodyFileNow.open(h->requestNow->filePath, std::ios::in | std::ios::binary);
+          if(h->bodyFileNow.is_open()){//说明这个同名文件已存在
+            h->bodyFileNow.close();
+            h->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+          }else{
+            h->bodyFileNow.close();
+            break;
+          }
+        }
+        h->bodyFileNow.open(h->requestNow->filePath, std::ios::out | std::ios::binary);
+        TTCPS2_LOGGER.trace("onBody(): temp file is {0}", h->requestNow->filePath);
+
+        // 先写原有的内容再写新内容
+        auto rp = h->requestNow->body->getReadingPtr(h->requestNow->body->getLength(),actualLen);
+        h->bodyFileNow.write((char*)rp, h->requestNow->body->getLength())
+                      .write(at,length);
+        h->requestNow->body = nullptr; // 舍弃Buffer // h->requestNow->body->pop(h->requestNow->body->getLength());
+      }else if(h->bodyFileNow.is_open()){//已经有文件
+        h->bodyFileNow.write(at,length);
+      }else{//暂未有文件但位置还够
+        memcpy(wp,at,length);
+        h->requestNow->body->push(length);
+      }
+      TTCPS2_LOGGER.trace("onBody() done");
+      return 0;
+    }
   }
 
   int onChunkHeader(http_parser* parser){
@@ -120,23 +155,30 @@ namespace TTCPS2
   int onMessageComplete(http_parser* parser){
     auto h = (HTTPHandler*)(parser->data);
 
+    // requestNow的构造已完成，置空几个暂存变量
     if(h->bodyFileNow.is_open()){
       h->bodyFileNow.close();
     }
+    h->headerKeyNow.clear();
+    h->headerValueNow.clear();
 
     /// 执行回调，消费掉这个Request
     if(0 >= h->router.count(h->requestNow->method) || 0 >= h->router[h->requestNow->method].count(h->requestNow->url)){//没有注册相应的回调
       /// 响应404
       TTCPS2_LOGGER.info("onMessageComplete(): 404");
       h->newResponse().setResponse(http_status::HTTP_STATUS_NOT_FOUND)
-                      .setResponse("Server","github.com/misterwu1998/TinyTCPServer2");
+                      .setResponse("Server","github.com/misterwu1998/TinyTCPServer2")
+                      .setResponse("Content-Type","text/html");
       auto filepath = loadConfigure()["404"];
       TTCPS2_LOGGER.trace("onMessageComplete(): resource file of 404 is {0}",filepath);
-      std::fstream f(filepath, std::ios::in);
-      char temp[1024];
-      f.read(temp,1024);
-      h->setResponse(temp, f.gcount());
-      f.close();
+
+      // std::fstream f(filepath, std::ios::in);
+      // char temp[1024];
+      // f.read(temp,1024);
+      // h->setResponse(temp, f.gcount());
+      // f.close();
+      h->setResponse(filepath);
+
       while(h->responseNow){
         if(0>h->doRespond()){
           TTCPS2_LOGGER.warn("onMessageComplete(): something wrong when doRespond().");

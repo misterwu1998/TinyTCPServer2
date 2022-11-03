@@ -36,11 +36,14 @@ namespace TTCPS2
     http_parser requestParser;//.data: 当前HTTPHandler对象的this指针（仅在handle()期间被访问，而handle()期间当前对象不可能被丢弃，因此无需担心this指针失效）
     std::unique_ptr<Buffer> toBeParsed;//当前正在被http-parser所解析的数据
     std::shared_ptr<HTTPRequest> requestNow;//当前正在被反序列化或正要被处理的HTTPRequest
+
     std::string headerKeyNow;//当前http-parser正在解析的HTTP header的key
     std::string headerValueNow;//当前http-parser正在解析的HTTP header的value
     std::fstream bodyFileNow;//如果当前遇到非定长的body，可能需要打开一个文件来保存它
+    
     std::shared_ptr<HTTPResponse> responseNow;//TinyHTTPServer/1.1是半双工的，这个response发送完之前，当前TCP连接不会有下一个request发来，所以不需要安排队列
     uint32_t respondingStage;//用于标记responseNow写出的进度: 0. 正在写状态行; 1. 正在写header; 2. 正在写空行; 3. 正在写body; 4. 对于chunk模式，正在写最后一个空块
+    
     std::unique_ptr<Buffer> toRespond;//当前正要发送的HTTP Response数据
 
   public:

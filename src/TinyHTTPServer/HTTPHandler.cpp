@@ -235,31 +235,31 @@ namespace TTCPS2
         }
       }else{//有文件
         if(!bodyFileNow.is_open()){//文件未打开
-          // if(0!=::access(responseNow->filePath.c_str(), F_OK)){//文件不能正常访问
-          //   TTCPS2_LOGGER.warn("HTTPHandler::doRespond(): the file {0} can't be accessed.", responseNow->filePath);
-          //   return -1;
-          // }
           bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
-          if(!bodyFileNow.is_open()){//还是没打开
-            TTCPS2_LOGGER.warn("HTTPHandler::doRespond(): the file {0} can't be accessed.", responseNow->filePath);
-            return -1;
-          }
         }
-        while(true){//尽量发
-          wp = toRespond->getWritingPtr(LENGTH_PER_SEND,al);
-          if(0>=al){//没位置了
-            return count;
+        if(bodyFileNow.is_open()){//文件存在，才有内容可发送
+          while(true){//尽量发
+            wp = toRespond->getWritingPtr(LENGTH_PER_SEND,al);
+            if(0>=al){//没位置了
+              return count;
+            }
+            bodyFileNow.read((char*)wp,al);
+            toRespond->push(bodyFileNow.gcount());
+            count += bodyFileNow.gcount();
+
+            // 提醒底层的NetIOReactor可以发送数据
+            TCPConnection::remindNetIOReactor();
+
+            if(bodyFileNow.eof()){//文件走完了
+              bodyFileNow.close();
+              TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): the file of current Response done.");
+              responseNow = nullptr;//不需要了
+              respondingStage = 4;
+              break;
+            }
           }
-          bodyFileNow.read((char*)wp,al);
-          toRespond->push(bodyFileNow.gcount());
-          count += bodyFileNow.gcount();
-          if(bodyFileNow.eof()){//文件走完了
-            bodyFileNow.close();
-            TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): the file of current Response done.");
-            responseNow = nullptr;
-            respondingStage = 4;
-            break;
-          }
+        }else{//文件不存在，直接发送空块
+          respondingStage = 4;
         }
       }
     }
@@ -277,8 +277,8 @@ namespace TTCPS2
       responseNow = nullptr;
       return count;
     }
-    return -1;
 
+    return -1;
   }
 
   HTTPHandler::~HTTPHandler(){
