@@ -158,7 +158,7 @@ namespace TTCPS2
     std::string line;
 
     if(0==respondingStage){
-      line = "TinyHTTPServer/1.1 " + std::to_string((uint32_t)(responseNow->status)) + http_status_str(responseNow->status) + "\r\n";
+      line = "HTTP/1.1 " + std::to_string((uint32_t)(responseNow->status)) + ' ' + http_status_str(responseNow->status) + "\r\n";
       wp = toRespond->getWritingPtr(line.length(),al);
       if(al<line.length()){//位置不够，下次再来
         return count;
