@@ -17,10 +17,10 @@ namespace TTCPS2
         if(spdLogger)        this->spdLogger = spdLogger;
         else{
           this->spdLogger = spdlog::rotating_logger_mt(
-              "default-log"
+              "default logname"
             , "./temp/log/log"
             , 1024*1024*4, 4);
-          this->spdLogger->set_pattern("[%H:%M:%S.%e %z][%n][%l][thread %t] %v");
+          this->spdLogger->set_pattern("[%Y%m%d %H:%M:%S.%e %z][%l][thread %t] %v");
           this->spdLogger->set_level(spdlog::level::level_enum::info);
           this->spdLogger->flush_on(spdlog::level::level_enum::info);
         }
