@@ -6,7 +6,10 @@
 
 namespace TTCPS2
 {
-  HTTPHandlerFactory::HTTPHandlerFactory(){}
+  HTTPHandlerFactory::HTTPHandlerFactory(){
+    // 不定长的body需要创建文件来保存，需要保证目录存在
+    if(0!=system("mkdir -p ./temp/")) exit(-1);
+  }
 
   int HTTPHandlerFactory::route(http_method method, std::string const& path, std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)> const& callback){
     auto& m = router[method];

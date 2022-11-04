@@ -73,16 +73,13 @@ namespace TTCPS2
     auto it = THIS->requestNow->header.find("Transfer-Encoding");
     if(it!=THIS->requestNow->header.end() && it->second.find("chunked")!=std::string::npos){//是分块模式
       if(THIS->bodyFileNow.is_open()==false){//暂未有文件
-        auto dir = "./temp/request_data" + THIS->requestNow->url; 
-        if(dir[dir.length()-1]!='/'){
-          dir.append(1,'/');
-        }
-        THIS->requestNow->filePath = dir + std::to_string(currentTimeMillis());
+        auto prefix = "./temp/request_data_";
+        THIS->requestNow->filePath = prefix + std::to_string(currentTimeMillis());
         while(true){//循环直到文件名不重复
           THIS->bodyFileNow.open(THIS->requestNow->filePath, std::ios::in | std::ios::binary);
           if(THIS->bodyFileNow.is_open()){//说明这个同名文件已存在
             THIS->bodyFileNow.close();
-            THIS->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+            THIS->requestNow->filePath = prefix + std::to_string(currentTimeMillis());//换个名字
           }else{
             THIS->bodyFileNow.close();
             break;
