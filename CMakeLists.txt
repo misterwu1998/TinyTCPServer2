@@ -24,16 +24,16 @@ target_link_directories(EchoServer PUBLIC ./build)
 target_link_directories(EchoClient PUBLIC ./build)
 target_link_libraries(EchoServer TinyTCPServer2 Threads::Threads)
 
-add_library(TinyWebServer SHARED
+add_library(TinyHTTPServer SHARED
   ${SOURCE_CPP}
   ${SOURCE_C}
 )
-target_link_directories(TinyWebServer PUBLIC ./build)
-target_link_libraries(TinyWebServer TinyTCPServer2 Threads::Threads)
+target_link_directories(TinyHTTPServer PUBLIC ./build)
+target_link_libraries(TinyHTTPServer TinyTCPServer2 Threads::Threads)
 
 add_executable(SimpleWebDemo ./test/TinyHTTPServer/SimpleWebDemo.cpp)
 target_link_directories(SimpleWebDemo PUBLIC ./build/)
-target_link_libraries(SimpleWebDemo TinyWebServer TinyTCPServer2 Threads::Threads)
+target_link_libraries(SimpleWebDemo TinyHTTPServer TinyTCPServer2 Threads::Threads)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
