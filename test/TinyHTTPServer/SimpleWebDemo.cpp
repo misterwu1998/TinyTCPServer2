@@ -2,9 +2,11 @@
 #include "TinyHTTPServer/HTTPHandlerFactory.hpp"
 #include "TinyHTTPServer/HTTPHandler.hpp"
 #include "util/ThreadPool.hpp"
+#include "util/Buffer.hpp"
 #include <iostream>
 #include "TinyTCPServer2/Logger.hpp"
 #include "spdlog/sinks/rotating_file_sink.h"
+#include "TinyHTTPServer/HTTPMessage.hpp"
 #include "util/Config.hpp"
 
 int main(int argc, char const *argv[])
@@ -21,48 +23,60 @@ int main(int argc, char const *argv[])
 
   std::shared_ptr<TTCPS2::HTTPHandlerFactory> HTTPSettings(
     std::make_shared<TTCPS2::HTTPHandlerFactory>()  );
-  HTTPSettings->route(http_method::HTTP_GET, "/hello", [](std::shared_ptr<TTCPS2::HTTPHandler> h)->int{
-    return h->newResponse()
-             .setResponse(http_status::HTTP_STATUS_OK)
-             .setResponse("Server","github.com/misterwu1998/TinyTCPServer2")
-             .setResponse("Content-Type","text/html")
-             .setResponse("Hello!",7)
-             .doRespond();
+
+  HTTPSettings->route(http_method::HTTP_GET, "/hello", [](std::shared_ptr<TTCPS2::HTTPRequest> req){
+    auto res = std::make_shared<TTCPS2::HTTPResponse>();
+    res->set(http_status::HTTP_STATUS_OK)
+        .set("Server","github.com/misterwu1998/TinyTCPServer2")
+        .set("Content-Type","text/html")
+        .set_body("Hello!",7);
+    return res;
   });
 
-  HTTPSettings->route(http_method::HTTP_GET, "/login.html", [](std::shared_ptr<TTCPS2::HTTPHandler> h)->int{
-    h->newResponse()
-      .setResponse(http_status::HTTP_STATUS_OK)
-      .setResponse("Server","github.com/misterwu1998/TinyTCPServer2")
-      .setResponse("Content-Type","text/html");
+  HTTPSettings->route(http_method::HTTP_GET, "/login.html", [](std::shared_ptr<TTCPS2::HTTPRequest> req){
     std::fstream f(
-        TTCPS2::loadConfigure()["login"]
-      , std::ios::in    );
+      TTCPS2::loadConfigure()["login"]
+    , std::ios::in    );
     char buf[1024];
     f.read(buf,1024);
-    h->setResponse(buf, f.gcount());
-    f.close();
-    return h->doRespond();
+
+    auto res = std::make_shared<TTCPS2::HTTPResponse>();
+    res->set(http_status::HTTP_STATUS_OK)
+        .set("Server","github.com/misterwu1998/TinyTCPServer2")
+        .set("Content-Type","text/html")
+        .set_body(buf, f.gcount());
+    return res;
   });
 
-  HTTPSettings->route(http_method::HTTP_GET, "/register.html", [](std::shared_ptr<TTCPS2::HTTPHandler> h)->int{
-    h->newResponse()
-      .setResponse(http_status::HTTP_STATUS_OK)
-      .setResponse("Server","github.com/misterwu1998/TinyTCPServer2")
-      .setResponse("Content-Type","text/html");
+  HTTPSettings->route(http_method::HTTP_GET, "/register.html", [](std::shared_ptr<TTCPS2::HTTPRequest> req){
     std::fstream f(
-        TTCPS2::loadConfigure()["register"]
-      , std::ios::in    );
+      TTCPS2::loadConfigure()["register"]
+    , std::ios::in    );
     char buf[1024];
     f.read(buf,1024);
-    h->setResponse(buf, f.gcount());
-    f.close();
-    return h->doRespond();
+
+    auto res = std::make_shared<TTCPS2::HTTPResponse>();
+    res->set(http_status::HTTP_STATUS_OK)
+        .set("Server","github.com/misterwu1998/TinyTCPServer2")
+        .set("Content-Type","text/html")
+        .set_body(buf, f.gcount());
+    return res;
   });
-  
+
+  HTTPSettings->route(http_method::HTTP_GET, "/chunked", [](std::shared_ptr<TTCPS2::HTTPRequest> req){
+    auto res = std::make_shared<TTCPS2::HTTPResponse>();
+    res->set(http_status::HTTP_STATUS_OK)
+        .set("Content-Type","text/html")
+        .set_chunked(TTCPS2::loadConfigure()["register"]);
+    return res;
+  });
+
+  // TTCPS2::TinyHTTPServer tws(
+  //     "127.0.0.1", 6324,32,1,HTTPSettings
+  //   , &(TTCPS2::ThreadPool::getPool(1)));
   TTCPS2::TinyHTTPServer tws(
-      "127.0.0.1", 6324,32,1,HTTPSettings
-    , &(TTCPS2::ThreadPool::getPool(1)));
+    "127.0.0.1", 6324, 16, 2, HTTPSettings
+  , &(TTCPS2::ThreadPool::getPool(2))  );
   tws.run();
   std::cout << "Input something to shutdown: ";
   ::getchar();

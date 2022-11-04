@@ -10,49 +10,21 @@
 
 namespace TTCPS2
 {
-/// from http-parser.h
-/* Callbacks should return non-zero to indicate an error. The parser will
- * then halt execution.
- *
- * The one exception is on_headers_complete. In a HTTP_RESPONSE parser
- * returning '1' from on_headers_complete will tell the parser that it
- * should not expect a body. This is used when receiving a response to a
- * HEAD request which may contain 'Content-Length' or 'Transfer-Encoding:
- * chunked' headers that indicate the presence of a body.
- *
- * Returning `2` from on_headers_complete will tell parser that it should not
- * expect neither a body nor any futher responses on this connection. This is
- * useful for handling responses to a CONNECT request which may not contain
- * `Upgrade` or `Connection: upgrade` headers.
- *
- * http_data_cb does not return data chunks. It will be called arbitrarily
- * many times for each string. E.G. you might get 10 callbacks for "on_url"
- * each providing just a few characters more data.
- *///
-  int onMessageBegin(http_parser* parser);
-  int onURL(http_parser* parser, const char *at, size_t length);
-  int onHeaderField(http_parser* parser, const char *at, size_t length);
-  int onHeaderValue(http_parser* parser, const char *at, size_t length);
-  int onHeadersComplete(http_parser* parser);
-  int onBody(http_parser* parser, const char *at, size_t length);
-  int onChunkHeader(http_parser* parser);
-  int onChunkComplete(http_parser* parser);
-  int onMessageComplete(http_parser* parser);
-
-  class HTTPHandler;
+  class HTTPRequest;
+  class HTTPResponse;
 
   class HTTPHandlerFactory : virtual public TCPConnectionFactory
   {
   protected:
 
-    /// @brief <请求方法, <路径, 回调函数>>
+    /// @brief <请求方法, <URL, 回调函数<响应 (请求)>>>
     std::unordered_map<
-        http_method,
-        std::unordered_map<
-            std::string
-          , std::function<int (std::shared_ptr<HTTPHandler>)>>> router;
-
-    http_parser_settings requestParserSettings;
+      http_method
+    , std::unordered_map<
+        std::string
+      , std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)>
+      >
+    > router;
 
   public:
 
@@ -61,9 +33,9 @@ namespace TTCPS2
     /// @brief 将方法为method，路径为path的请求路由到指定的回调函数
     /// @param method 
     /// @param path 
-    /// @param callback 收到一个完整的HTTP请求后被调用，负责调用 HTTPHandler::setResponse 及 HTTPHandler::doRespond
+    /// @param callback 
     /// @return 1表示回调函数被追加；0表示原有的回调函数被替换；-1表示出错
-    int route(http_method method, std::string const& path, std::function<int (std::shared_ptr<HTTPHandler>)> callback);
+    int route(http_method method, std::string const& path, std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)> const& callback);
 
     virtual std::shared_ptr<TCPConnection> operator()(NetIOReactor* netIOReactor, int clientSocket);
 

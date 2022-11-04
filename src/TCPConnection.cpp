@@ -251,6 +251,7 @@ namespace TTCPS2
         return -1;
       }else{
         TTCPS2_LOGGER.trace("TCPConnection::remindNetIOReactor(): EPOLLOUT of client socket {0} been listened to.", clientSocket);
+        return 0;
       }
     }else {
       TTCPS2_LOGGER.warn("TCPConnection::remindNetIOReactor(): TCPConnection of client socket {0} been discarded but still asked to be listened.", clientSocket);
