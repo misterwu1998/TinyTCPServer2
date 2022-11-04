@@ -29,7 +29,7 @@ int main(int argc, char const *argv[])
     res->set(http_status::HTTP_STATUS_OK)
         .set("Server","github.com/misterwu1998/TinyTCPServer2")
         .set("Content-Type","text/html")
-        .set_body("Hello!",7);
+        .append("Hello!",7);
     return res;
   });
 
@@ -44,7 +44,7 @@ int main(int argc, char const *argv[])
     res->set(http_status::HTTP_STATUS_OK)
         .set("Server","github.com/misterwu1998/TinyTCPServer2")
         .set("Content-Type","text/html")
-        .set_body(buf, f.gcount());
+        .append(buf, f.gcount());
     return res;
   });
 
@@ -59,7 +59,7 @@ int main(int argc, char const *argv[])
     res->set(http_status::HTTP_STATUS_OK)
         .set("Server","github.com/misterwu1998/TinyTCPServer2")
         .set("Content-Type","text/html")
-        .set_body(buf, f.gcount());
+        .append(buf, f.gcount());
     return res;
   });
 

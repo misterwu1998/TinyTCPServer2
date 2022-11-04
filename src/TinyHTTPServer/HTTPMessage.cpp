@@ -26,15 +26,19 @@ namespace TTCPS2
     return *this;
   }
 
-  HTTPRequest& HTTPRequest::set_body(const void* data, uint32_t length){
+  HTTPRequest& HTTPRequest::append(const void* data, uint32_t length){
     auto& r = *this;
     if(! r.body) r.body = std::make_shared<TTCPS2::Buffer>(length);
     uint32_t len; auto wp = r.body->getWritingPtr(length, len);
     if(1>len) return r;
     memcpy(wp, data, len);
     r.body->push(len);
+    
+    auto it = r.header.find("Content-Length");
+    if(it==r.header.end()) r.header.insert({"Content-Length", std::to_string(r.body->getLength())});
+    else it->second = std::to_string(r.body->getLength());
 
-    auto it = r.header.find("Transfer-Encoding");
+    it = r.header.find("Transfer-Encoding");
     if(it!=r.header.end() && it->second.find("chunked")!=std::string::npos){//原本是分块传输模式
       r.header.erase(it);
     }
@@ -78,7 +82,7 @@ namespace TTCPS2
     return r;
   }
 
-  HTTPResponse& HTTPResponse::set_body(const void* data, uint32_t length){
+  HTTPResponse& HTTPResponse::append(const void* data, uint32_t length){
     auto& r = *this;
     r.filePath.clear();
     auto it = r.header.find("Transfer-Encoding");
