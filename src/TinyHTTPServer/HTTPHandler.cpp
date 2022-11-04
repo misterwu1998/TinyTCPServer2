@@ -4,288 +4,239 @@
 #include "TinyTCPServer2/Logger.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
 #include <sstream>
+#include "util/Config.hpp"
+#include "util/TimerTask.hpp"
+
+#define THIS ((HTTPHandler*)(parser->data))
+
+#include <iomanip>
+std::string _dec2hex(int64_t i){
+  std::stringstream ss;
+  ss << std::setiosflags(std::ios_base::fmtflags::_S_uppercase) << std::hex << i;
+  std::string ret;
+  ss >> ret;
+  return ret;
+}
 
 namespace TTCPS2
 {
-  HTTPHandler::HTTPHandler(
-        NetIOReactor* netIOReactor
-      , int clientSocket
-      , std::unordered_map<
-          http_method,
-          std::unordered_map<
-              std::string
-            , std::function<int (std::shared_ptr<HTTPHandler>)>>>& router
-      , http_parser_settings& requestParserSettings)
-  : TCPConnection::TCPConnection(netIOReactor,clientSocket)
-  , router(router)
-  , requestParserSettings(requestParserSettings)
-  , toBeParsed(new Buffer(512))
-  , toRespond(new Buffer(512))
-  , respondingStage(0) {
-    http_parser_init(&requestParser, http_parser_type::HTTP_REQUEST);
-    requestParser.data = this;
-    TTCPS2_LOGGER.trace("HTTPHandler::HTTPHandler() done");
-  }
-
-  int HTTPHandler::handle(){
-
-    if(TCPConnection::compareAndSwap_working(false,true)){//没能抢到名额
-      return 0;
-    }
-
-    TTCPS2_LOGGER.trace("HTTPHandler::handle()");
-    // 提取一部分数据，交给http_parser进行解析，http_parser解析遇到关键节点时调用回调函数
-
-    auto lenUnprocessed = getUnprocessedLength();
-    if(0==lenUnprocessed) return 0;
-    unsigned int actualLength;
-    auto dst = toBeParsed->getWritingPtr(lenUnprocessed,actualLength);
-    int ret = takeData(actualLength,dst);
-    if(0>ret){
-      TTCPS2_LOGGER.warn("HTTPHandler::handle(): something wrong when takeData().");
-    }
-    toBeParsed->push(ret);
-
-    const void* pr = toBeParsed->getReadingPtr(toBeParsed->getLength(), actualLength);
-    size_t lenParsed = http_parser_execute(&requestParser, &requestParserSettings, (const char*)pr, actualLength);//HTTPHandler其它的成员函数的调用，也就是服务的逻辑，实际上都发生在回调函数里边
-    toBeParsed->pop(lenParsed);
-
-    pr = toRespond->getReadingPtr(toRespond->getLength(), actualLength);
-    lenParsed = bringData(pr,actualLength);
-    toRespond->pop(lenParsed);
-
-    TTCPS2_LOGGER.trace("HTTPHandler::handle() done");
-
-    compareAndSwap_working(true,false);//归还执行名额
+  int HTTPHandler::onMessageBegin(http_parser* parser){
+    // 填入请求方法
+    THIS->requestNow = std::make_shared<HTTPRequest>();
+    THIS->requestNow->method = (http_method)(parser->method);
+    TTCPS2_LOGGER.trace("HTTPHandler::onMessageBegin(): method is {0}.", http_method_str((http_method)parser->method));
     return 0;
   }
 
-  std::shared_ptr<HTTPRequest> HTTPHandler::getRequestNow(){    return requestNow;  }
-
-  HTTPHandler& HTTPHandler::newResponse(){
-    responseNow = std::make_shared<HTTPResponse>();
-    respondingStage = 0;
-    return *this;
+  int HTTPHandler::onURL(http_parser* parser, const char *at, size_t length){
+    /// 追补URL（对于同一URL, onURL()可能被多次调用）
+    auto requestNow = ((HTTPHandler*)(parser->data))->requestNow;
+    if(!requestNow){
+      TTCPS2_LOGGER.error("HTTPHandler::onURL(): HTTPRequest object doesn't exist!");
+      assert(false);
+    }
+    requestNow->url += std::string(at,length);
+    TTCPS2_LOGGER.trace("HTTPHandler::onURL(): now, URL is {0}", requestNow->url);
+    return 0;
   }
 
-  std::shared_ptr<HTTPResponse> HTTPHandler::getResponseNow(){    return responseNow;  }
-
-  HTTPHandler& HTTPHandler::setResponse(http_status status){
-    if(!responseNow) newResponse();
-    responseNow->status = status;
-    return *this;
+  int HTTPHandler::onHeaderField(http_parser* parser, const char *at, size_t length){
+    /// 追补新key的字符串
+    if(!THIS->headerValueNow.empty()){//上一个header键值对还没处理好
+      THIS->requestNow->header.insert({THIS->headerKeyNow, THIS->headerValueNow});
+      THIS->headerKeyNow.clear();
+      THIS->headerValueNow.clear();
+    }
+    THIS->headerKeyNow += std::string(at,length);
+    TTCPS2_LOGGER.trace("HTTPHandler::onHeaderField(): now, key of the incoming header is {0}", THIS->headerKeyNow);
+    return 0;
   }
 
-  HTTPHandler& HTTPHandler::setResponse(std::string const& headerKey, std::string const& headerValue){
-    if(!responseNow) newResponse();
-    auto iter = responseNow->header.find(headerKey);
-    while(iter!=responseNow->header.end() && iter->first==headerKey){//仍然是同一个key
-      if(iter->second==headerValue){//已有这个键值对
-        TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): the header been in Response.");
-        return *this;
+  int HTTPHandler::onHeaderValue(http_parser* parser, const char *at, size_t length){
+    /// 追补新value
+    THIS->headerValueNow += std::string(at,length);
+    TTCPS2_LOGGER.trace("HTTPHandler::onHeaderValue(): now, value of the incoming header is {0}", THIS->headerValueNow);
+    return 0;
+  }
+
+  int HTTPHandler::onHeadersComplete(http_parser* parser){
+    if(!THIS->headerValueNow.empty()){//上一个header键值对还没处理好
+      THIS->requestNow->header.insert({THIS->headerKeyNow, THIS->headerValueNow});
+      THIS->headerKeyNow.clear();
+      THIS->headerValueNow.clear();
+    }
+    TTCPS2_LOGGER.trace("HTTPHandler::onHeadersComplete() done");
+    return 0;
+  }
+
+  int HTTPHandler::onBody(http_parser* parser, const char *at, size_t length){
+    auto it = THIS->requestNow->header.find("Transfer-Encoding");
+    if(it!=THIS->requestNow->header.end() && it->second.find("chunked")!=std::string::npos){//是分块模式
+      if(THIS->bodyFileNow.is_open()==false){//暂未有文件
+        auto dir = "./temp/request_data" + THIS->requestNow->url; 
+        if(dir[dir.length()-1]!='/'){
+          dir.append(1,'/');
+        }
+        THIS->requestNow->filePath = dir + std::to_string(currentTimeMillis());
+        while(true){//循环直到文件名不重复
+          THIS->bodyFileNow.open(THIS->requestNow->filePath, std::ios::in | std::ios::binary);
+          if(THIS->bodyFileNow.is_open()){//说明这个同名文件已存在
+            THIS->bodyFileNow.close();
+            THIS->requestNow->filePath = dir + std::to_string(currentTimeMillis());//换个名字
+          }else{
+            THIS->bodyFileNow.close();
+            break;
+          }
+        }
+        THIS->bodyFileNow.open(THIS->requestNow->filePath, std::ios::out | std::ios::binary);
+        TTCPS2_LOGGER.trace("HTTPHandler::onBody(): temp file is {0}", THIS->requestNow->filePath);
       }
-      ++iter;
+      THIS->bodyFileNow.write(at,length);
+    }else{//不是分块模式
+      if(!THIS->requestNow->body){//还未创建Buffer
+        THIS->requestNow->body = std::make_shared<Buffer>(length);
+      }
+      uint32_t al; auto wp = THIS->requestNow->body->getWritingPtr(length,al);
+      memcpy(wp,at,length);
+      THIS->requestNow->body->push(length);
     }
-    responseNow->header.insert({headerKey,headerValue});
-    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): successfully insert new header.");
-    return *this;
+    TTCPS2_LOGGER.trace("HTTPHandler::onBody() done");
+    return 0;
   }
 
-  HTTPHandler& HTTPHandler::setResponse(const void* bodyData, uint32_t length){
-    if(!responseNow) newResponse();
-    if(!responseNow->body){//还未有Buffer
-      responseNow->body = std::make_shared<Buffer>(length);
-    }
-    uint32_t al;
-    auto wp = responseNow->body->getWritingPtr(length,al);//这里暂不考虑al!=length的情形，默认bodyData不超过Buffer上限
-    memcpy(wp,bodyData,al);
-    responseNow->body->push(al);
-    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): bodyData been pushed into the Buffer responseNow->body.");
+  int HTTPHandler::onMessageComplete(http_parser* parser){
+    // 置空临时变量
+    THIS->headerKeyNow.clear();
+    THIS->headerValueNow.clear();
+    THIS->bodyFileNow.close();
+    TTCPS2_LOGGER.trace("HTTPHandler::onMessageComplete(): an HTTP request has been parsed!");
     
-    // 更新"Content-Length"
-    auto it = responseNow->header.find("Content-Length");
-    if(it==responseNow->header.end()){//还没有这个header
-      responseNow->header.insert({"Content-Length", std::to_string(responseNow->body->getLength())});
+    // 消费掉request，给出response
+    std::shared_ptr<HTTPResponse> res;
+    if(THIS->router.count(THIS->requestNow->method)<1
+    || THIS->router.at(THIS->requestNow->method).count(THIS->requestNow->url)<1){//404
+      /// 404
+      TTCPS2_LOGGER.info("HTTPHandler::onMessageComplete(): 404");
+      res = std::make_shared<HTTPResponse>();
+      res->set(http_status::HTTP_STATUS_NOT_FOUND);
     }else{
-      it->second = std::to_string(responseNow->body->getLength());
+      auto cb = THIS->router.at(THIS->requestNow->method).at(THIS->requestNow->url);
+      res = cb(THIS->requestNow);
+      if(!res){
+        TTCPS2_LOGGER.info("HTTPHandler::onMessageComplete(): fail to respond the HTTP request.");
+        /// 400
+        res = std::make_shared<HTTPResponse>();
+        res->set(http_status::HTTP_STATUS_BAD_REQUEST);
+      }
     }
-    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): Content-Length been updated.");
+    THIS->requestNow = nullptr;
 
-    // 确保非chunked模式
-    responseNow->filePath.clear();
-    it = responseNow->header.find("Transfer-Encoding");
-    if(it!=responseNow->header.end() && it->second.find("chunked")!=std::string::npos){//原本是chunked模式
-      responseNow->header.erase(it);
+    // 头部
+    std::string sss; {std::stringstream ss;
+    ss << ("HTTP/1.1 " + std::to_string(res->status) + ' ' + http_status_str(res->status) + "\r\n");
+    for(auto const& kv : res->header){
+      ss << (kv.first + ": " + kv.second + "\r\n");
+    }
+    ss << "\r\n";
+    sss = ss.str();}//delete ss
+    if(0>THIS->bringData(sss.data(), sss.length())){
+      TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): 0>THIS->bringData(sss.data(), sss.length())");
+      return -1;
     }
 
-    return *this;
+    // 对于定长body的响应，拷贝完才发；对于不定长的body，拷贝一批数据就提醒底层发一次
+    if(res->body && res->body->getLength()>0){//有定长的body要发
+      uint32_t len; auto rp = res->body->getReadingPtr(res->body->getLength(), len);
+      if(0>THIS->bringData(rp,len)){
+        TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): 0>THIS->bringData(rp,len)");
+        return -1;
+      }
+      res->body->pop(len);
+    }else if(! res->filePath.empty()){//分块传输模式
+      std::ifstream f(res->filePath, std::ios::in | std::ios::binary);
+      if(f.is_open()){//文件存在，才有内容可发
+        char buf[1024];
+        while(! f.eof()){
+          f.read(buf,1024);
+          auto sLen = _dec2hex(f.gcount()) + "\r\n";
+          if(0 > THIS->bringData(sLen.data(), sLen.length())
+          || 0 > THIS->bringData(buf, f.gcount())
+          || 0 > THIS->bringData("\r\n", 2)){
+            TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): fail in TCPConnection::bringData()");
+            return -1;
+          }
+          // 每发一个块就提醒一次
+          if(0 > THIS->remindNetIOReactor()){
+            TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): 0 > THIS->remindNetIOReactor()");
+            return -1;
+          }
+        }
+      }
+      // 不管文件是否存在，都得发最后的空块
+      if(0 > THIS->bringData("0\r\n\r\n",5)){
+        TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): fail to bring the last chunk.");
+        return -1;
+      }
+    }
+    TTCPS2_LOGGER.trace("HTTPHandler::onMessageComplete(): done");
+
+    return 0;
   }
 
-  HTTPHandler& HTTPHandler::setResponse(std::string const& filepath){
-    if(!responseNow) newResponse();
-    responseNow->filePath = filepath;
+  HTTPHandler::HTTPHandler(
+      NetIOReactor* netIOReactor
+    , int clientSocket
+    , std::unordered_map<
+        http_method,
+        std::unordered_map<
+            std::string
+          , std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)>>> const& router
+  ) : TCPConnection(netIOReactor,clientSocket)
+    , router(router)
+    , unParsed(new Buffer()){
+    http_parser_init(&parser, http_parser_type::HTTP_REQUEST);
+    parser.data = this;
 
-    // 确保是chunked模式
-    auto it = responseNow->header.find("Transfer-Encoding");
-    if(it==responseNow->header.end()){
-      responseNow->header.insert({"Transfer-Encoding","chunked"});
-    }else if(it->second.find("chunked")==std::string::npos){
-      it->second = "chunked";
-    }
-    it = responseNow->header.find("Content-Length");
-    if(it!=responseNow->header.end()){
-      responseNow->header.erase(it);
-    }
-    responseNow->body = nullptr;//丢弃Buffer
-
-    TTCPS2_LOGGER.trace("HTTPHandler::setResponse(): the Response been switched to chunked-data mode.");
-    return *this;
+    http_parser_settings_init(&settings);
+    settings.on_message_begin = onMessageBegin;
+    settings.on_url = onURL;
+    settings.on_header_field = onHeaderField;
+    settings.on_header_value = onHeaderValue;
+    settings.on_headers_complete = onHeadersComplete;
+    settings.on_body = onBody;
+    settings.on_message_complete = onMessageComplete;
   }
 
-  int64_t HTTPHandler::doRespond(){
-    if(!responseNow) return 0;
-
-    if(1>respondingStage
-    && responseNow->body 
-    && 0<responseNow->body->getLength() 
-    && 0>responseNow->header.count("Content-Length")){//需要，但还没有content-length
-      responseNow->header.insert({"Content-Length", std::to_string(responseNow->body->getLength())});
+  int HTTPHandler::handle(){
+    if(compareAndSwap_working(false,true)){
+      TTCPS2_LOGGER.trace("HTTPHandler::handle(): some thread's been in handle().");
+      return 0;
     }
-    
-    uint32_t count = 0;//这次写多少
-    uint32_t al,temp;
-    void* wp;
-    std::string line;
 
-    if(0==respondingStage){
-      line = "HTTP/1.1 " + std::to_string((uint32_t)(responseNow->status)) + ' ' + http_status_str(responseNow->status) + "\r\n";
-      wp = toRespond->getWritingPtr(line.length(),al);
-      if(al<line.length()){//位置不够，下次再来
-        return count;
+    while(true){
+      uint32_t len; auto wp = unParsed->getWritingPtr(TCPConnection::getUnprocessedLength(), len);
+      if(1>len) break;
+      if(len!=TCPConnection::takeData(len,wp)){
+        TTCPS2_LOGGER.warn("HTTPHandler::handle(): len!=TCPConnection::takeData(len,wp)");
+        return -1;
       }
-      memcpy(wp, line.c_str(), al);
-      toRespond->push(al);
-      count += al;
-      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): first line of Response done.");
-      respondingStage = 1;
-    }
-    if(1==respondingStage){
-      while(true){//尽量发
-        auto it = responseNow->header.begin();
-        if(responseNow->header.end()==it){//没有了
-          break;
-        }//还有
+      unParsed->push(len);
 
-        line = it->first + ": " + it->second + "\r\n";
-        wp = toRespond->getWritingPtr(line.length(),al);
-        if(al<line.length()){//位置不够，下次再来
-          return count;
-        }
-        memcpy(wp, line.c_str(), al);
-        toRespond->push(al);
-        count += al;
-
-        responseNow->header.erase(it);//写一个扔一个
-      }//写完header了
-      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): headers of Response done.");
-      respondingStage = 2;
-    }
-    if(2==respondingStage){
-      line = "\r\n";
-      wp = toRespond->getWritingPtr(line.length(),al);
-      if(al<line.length()){//位置不够，下次再来
-        return count;
-      }
-      memcpy(wp, line.c_str(), al);
-      toRespond->push(al);
-      count += al;
-      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): empty line of Response done.");
-      respondingStage = 3;
-    }
-    if(3==respondingStage){
-      if(responseNow->filePath.empty()){//没文件
-        if(responseNow->body){//有响应体
-          if(responseNow->body->getLength()==0){//有响应体但写完了
-            TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
-            responseNow = nullptr;//丢弃response
-            respondingStage = 0;//复位
-            return count;
-          }
-          auto rp = responseNow->body->getReadingPtr(responseNow->body->getLength(),temp);
-          wp = toRespond->getWritingPtr(responseNow->body->getLength(),al);
-          if(0>=al){//没位置可写了
-            return count;
-          }
-          if(temp<al) al = temp;//实际要写多少
-          ::memcpy(wp,rp,al);
-          toRespond->push(al);
-          responseNow->body->pop(al);
-          count += al;
-          if(responseNow->body->getLength()==0){//有响应体但写完了
-            TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
-            responseNow = nullptr;//丢弃response
-            respondingStage = 0;//复位
-          }
-          return count;
-        }else{//没响应体
-          TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
-          responseNow = nullptr;//丢弃response
-          respondingStage = 0;//复位
-          return count;
-        }
-      }else{//有文件
-        if(!bodyFileNow.is_open()){//文件未打开
-          bodyFileNow.open(responseNow->filePath, std::ios::in | std::ios::binary);
-        }
-        if(bodyFileNow.is_open()){//文件存在，才有内容可发送
-          while(true){//尽量发
-            wp = toRespond->getWritingPtr(LENGTH_PER_SEND,al);
-            if(0>=al){//没位置了
-              return count;
-            }
-            bodyFileNow.read((char*)wp,al);
-            toRespond->push(bodyFileNow.gcount());
-            count += bodyFileNow.gcount();
-
-            // 提醒底层的NetIOReactor可以发送数据
-            TCPConnection::remindNetIOReactor();
-
-            if(bodyFileNow.eof()){//文件走完了
-              bodyFileNow.close();
-              TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): the file of current Response done.");
-              responseNow = nullptr;//不需要了
-              respondingStage = 4;
-              break;
-            }
-          }
-        }else{//文件不存在，直接发送空块
-          respondingStage = 4;
-        }
+      auto rp = unParsed->getReadingPtr(len,len);
+      unParsed->pop(http_parser_execute(&parser, &settings, (char*)rp, len));
+      if(unParsed->getLength()>0){//中途出差错了，所以没解析完
+        TTCPS2_LOGGER.warn("HTTPHandler::handle(): something wrong when parsing HTTP data.");
+        break;
       }
     }
-    if(4==respondingStage){
-      line = "0\r\n\r\n";
-      wp = toRespond->getWritingPtr(line.length(),al);
-      if(al<line.length()){//位置不够，下次再来
-        return count;
-      }
-      memcpy(wp, line.c_str(), al);
-      toRespond->push(al);
-      count += al;
-      TTCPS2_LOGGER.trace("HTTPHandler::doRespond(): current Response done.");
-      respondingStage = 0;
-      responseNow = nullptr;
-      return count;
-    }
 
-    return -1;
+    compareAndSwap_working(true,false);
+    TTCPS2_LOGGER.trace("HTTPHandler::handle(): done");
+    return 0;
   }
 
   HTTPHandler::~HTTPHandler(){
-    if(bodyFileNow.is_open()){
-      bodyFileNow.close();
-    }
-    TTCPS2_LOGGER.trace("HTTPHandler::~HTTPHandler() done");
+    delete unParsed;
   }
 
 } // namespace TTCPS2

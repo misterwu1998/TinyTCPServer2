@@ -13,40 +13,51 @@ namespace TTCPS2
 
   class HTTPHandler : virtual public TCPConnection
   {
-  protected:
-  
-    friend int onMessageBegin(http_parser* parser);
-    friend int onURL(http_parser* parser, const char *at, size_t length);
-    friend int onHeaderField(http_parser* parser, const char *at, size_t length);
-    friend int onHeaderValue(http_parser* parser, const char *at, size_t length);
-    friend int onHeadersComplete(http_parser* parser);
-    friend int onBody(http_parser* parser, const char *at, size_t length);
-    friend int onChunkHeader(http_parser* parser);
-    friend int onChunkComplete(http_parser* parser);
-    friend int onMessageComplete(http_parser* parser);
-
-    /// @brief <请求方法, <路径, 回调函数>>
+  private:
     std::unordered_map<
-        http_method,
-        std::unordered_map<
-            std::string
-          , std::function<int (std::shared_ptr<HTTPHandler>)>>>& router;
+      http_method,
+      std::unordered_map<
+          std::string
+        , std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)>>> const& router;
+    Buffer* unParsed;
+    http_parser parser;
+    http_parser_settings settings;
 
-    http_parser_settings& requestParserSettings;
-    http_parser requestParser;//.data: 当前HTTPHandler对象的this指针（仅在handle()期间被访问，而handle()期间当前对象不可能被丢弃，因此无需担心this指针失效）
-    std::unique_ptr<Buffer> toBeParsed;//当前正在被http-parser所解析的数据
-    std::shared_ptr<HTTPRequest> requestNow;//当前正在被反序列化或正要被处理的HTTPRequest
-
-    std::string headerKeyNow;//当前http-parser正在解析的HTTP header的key
-    std::string headerValueNow;//当前http-parser正在解析的HTTP header的value
-    std::fstream bodyFileNow;//如果当前遇到非定长的body，可能需要打开一个文件来保存它
-    
-    std::shared_ptr<HTTPResponse> responseNow;//TinyHTTPServer/1.1是半双工的，这个response发送完之前，当前TCP连接不会有下一个request发来，所以不需要安排队列
-    uint32_t respondingStage;//用于标记responseNow写出的进度: 0. 正在写状态行; 1. 正在写header; 2. 正在写空行; 3. 正在写body; 4. 对于chunk模式，正在写最后一个空块
-    
-    std::unique_ptr<Buffer> toRespond;//当前正要发送的HTTP Response数据
+    std::shared_ptr<HTTPRequest> requestNow;//当前正在解析，或恰好解析完、还未响应的Request
+    std::string headerValueNow;//用于解析HTTP的临时变量，一旦requestNow解析完整，就应当置空
+    std::string headerKeyNow;//用于解析HTTP的临时变量，一旦requestNow解析完整，就应当置空
+    std::fstream bodyFileNow;//用于解析HTTP的临时变量，一旦requestNow解析完整，就应当置空
 
   public:
+      
+    /// from http-parser.h
+    /* Callbacks should return non-zero to indicate an error. The parser will
+    * then halt execution.
+    *
+    * The one exception is on_headers_complete. In a HTTP_RESPONSE parser
+    * returning '1' from on_headers_complete will tell the parser that it
+    * should not expect a body. This is used when receiving a response to a
+    * HEAD request which may contain 'Content-Length' or 'Transfer-Encoding:
+    * chunked' headers that indicate the presence of a body.
+    *
+    * Returning `2` from on_headers_complete will tell parser that it should not
+    * expect neither a body nor any futher responses on this connection. This is
+    * useful for handling responses to a CONNECT request which may not contain
+    * `Upgrade` or `Connection: upgrade` headers.
+    *
+    * http_data_cb does not return data chunks. It will be called arbitrarily
+    * many times for each string. E.G. you might get 10 callbacks for "on_url"
+    * each providing just a few characters more data.
+    *///
+    static int onMessageBegin(http_parser* parser);
+    static int onURL(http_parser* parser, const char *at, size_t length);
+    static int onHeaderField(http_parser* parser, const char *at, size_t length);
+    static int onHeaderValue(http_parser* parser, const char *at, size_t length);
+    static int onHeadersComplete(http_parser* parser);
+    static int onBody(http_parser* parser, const char *at, size_t length);
+    static int onChunkHeader(http_parser* parser);
+    static int onChunkComplete(http_parser* parser);
+    static int onMessageComplete(http_parser* parser);
 
     HTTPHandler(
         NetIOReactor* netIOReactor
@@ -55,44 +66,8 @@ namespace TTCPS2
           http_method,
           std::unordered_map<
               std::string
-            , std::function<int (std::shared_ptr<HTTPHandler>)>>>& router
-      , http_parser_settings& requestParserSettings);
+            , std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)>>> const& router);
     virtual int handle();
-
-    std::shared_ptr<HTTPRequest> getRequestNow();
-
-    /// @brief 创建新的 HTTPHandler::responseNow
-    /// @return 当前HTTPHandler
-    HTTPHandler& newResponse();
-
-    std::shared_ptr<HTTPResponse> getResponseNow();
-
-    /// @brief 设置 HTTPHandler::responseNow 的status
-    /// @param status 
-    /// @return 当前HTTPHandler
-    HTTPHandler& setResponse(http_status status);
-
-    /// @brief 向 HTTPHandler::responseNow 添加键值对
-    /// @param headerKey 
-    /// @param headerValue 
-    /// @return 当前HTTPHandler
-    HTTPHandler& setResponse(std::string const& headerKey, std::string const& headerValue);
-
-    /// @brief 向 HTTPHandler::responseNow 追加响应体的数据、更新"Content-Length"，并且置空 HTTPResponse::filepath、确保header不含"Transfer-Encoding: chunked"
-    /// @param bodyData 
-    /// @param length 
-    /// @return 
-    HTTPHandler& setResponse(const void* bodyData, uint32_t length);
-
-    /// @brief 为 HTTPHandler::responseNow 指定chunk data的文件路径、确保header包含"Transfer-Encoding: chunked"，并且清空 HTTPResponse::body、确保header不含"Content-Length"
-    /// @param filepath 
-    /// @return 当前HTTPHandler
-    HTTPHandler& setResponse(std::string const& filepath);
-
-    /// @brief 响应完成后，向发送缓冲区写 HTTPHandler::responseNow; HTTPHandler::responseNow 被写完时将被置空
-    /// @return 正整数表示本次写的数据量 /字节; 0表示当前HTTPResponse已写完，或当前没有HTTPResponse需要写，或发送缓冲区暂时不能追加数据; -1表示出错
-    int64_t doRespond();
-
     virtual ~HTTPHandler();
     
   };
