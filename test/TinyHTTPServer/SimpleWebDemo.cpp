@@ -71,12 +71,20 @@ int main(int argc, char const *argv[])
     return res;
   });
 
+  HTTPSettings->route(http_method::HTTP_GET, "/bean.jpg", [](std::shared_ptr<TTCPS2::HTTPRequest> req){
+    auto res = std::make_shared<TTCPS2::HTTPResponse>();
+    res->set(http_status::HTTP_STATUS_OK)
+        .set("Content-Type","image/jpeg")
+        .set_chunked(TTCPS2::loadConfigure()["bean"]);
+    return res;
+  });
+
   // TTCPS2::TinyHTTPServer tws(
   //     "127.0.0.1", 6324,32,1,HTTPSettings
   //   , &(TTCPS2::ThreadPool::getPool(1)));
   TTCPS2::TinyHTTPServer tws(
-    "127.0.0.1", 6324, 16, 2, HTTPSettings
-  , &(TTCPS2::ThreadPool::getPool(2))  );
+    "127.0.0.1", 6324, 128, 4, HTTPSettings
+  , &(TTCPS2::ThreadPool::getPool(4))  );
   tws.run();
   std::cout << "Input something to shutdown: ";
   ::getchar();

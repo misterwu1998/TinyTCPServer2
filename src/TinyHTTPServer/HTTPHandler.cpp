@@ -7,6 +7,8 @@
 #include "util/Config.hpp"
 #include "util/TimerTask.hpp"
 
+#define FILE_READ_BUF_SIZE 4096
+
 #define THIS ((HTTPHandler*)(parser->data))
 
 #include <iomanip>
@@ -152,9 +154,9 @@ namespace TTCPS2
     }else if(! res->filePath.empty()){//分块传输模式
       std::ifstream f(res->filePath, std::ios::in | std::ios::binary);
       if(f.is_open()){//文件存在，才有内容可发
-        char buf[1024];
+        char buf[FILE_READ_BUF_SIZE];
         while(! f.eof()){
-          f.read(buf,1024);
+          f.read(buf,FILE_READ_BUF_SIZE);
           auto sLen = _dec2hex(f.gcount()) + "\r\n";
           if(0 > THIS->bringData(sLen.data(), sLen.length())
           || 0 > THIS->bringData(buf, f.gcount())

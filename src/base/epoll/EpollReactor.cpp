@@ -73,6 +73,7 @@ namespace TTCPS2
     std::vector<EpollEvent> toDel;
     {
       LG lg(m_events);
+      // 收集全部符合条件的EpollEvent
       for(auto& iter : events){
         if(filter(iter)){//符合条件
           temp.events = iter.events;
@@ -80,11 +81,13 @@ namespace TTCPS2
           toDel.emplace_back(iter);
         }
       }
+      // 移出集合
       for(auto& iter : toDel){
         events.erase(iter);
         ++count;
       }
     }
+    // 移出epoll监听树
     for(auto& iter : toDel){
       if(0>epoll_ctl(epollFD,EPOLL_CTL_DEL,iter.fd, &temp) && errno!=ENOENT){//FD本就不在epoll树上不属于错误
         TTCPS2_LOGGER.warn("EpollReactor::removeEvent(): 0>epoll_ctl(); errno means: " + std::string(strerror(errno)) + "\t Info of the epoll event: " + iter.getInfo());

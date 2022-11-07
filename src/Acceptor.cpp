@@ -43,7 +43,7 @@ namespace TTCPS2
       assert(false);
     }
 
-    if(0>::listen(listenFD,LISTEN_SIZE)){
+    if(0>::listen(listenFD, server->listenSize)){
       TTCPS2_LOGGER.error("Acceptor::Acceptor(): listen() fails!");
       assert(false);
     }
