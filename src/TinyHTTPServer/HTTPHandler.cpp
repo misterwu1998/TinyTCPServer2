@@ -216,28 +216,34 @@ int HTTPHandler::handle(){
     return 0;
   }
 
+  // 循环直到数据被解析、响应完
   while(true){
-    // uint32_t len; auto wp = unParsed->getWritingPtr(TCPConnection::getUnprocessedLength(), len);
     auto len = TCPConnection::getUnprocessedLength();
+    if(0>len){
+      TTCPS2_LOGGER.warn("HTTPHandler::handle(): 0>getUnprocessedLength()");
+      return -1;
+    }else if(0==len) break;
+
     auto wp = (*unParsed)[len];
     if(NULL==wp){
       TTCPS2_LOGGER.warn("HTTPHandler::handle(): the Buffer 'unParsed' is filled.");
       return -1;
     }
-    if(len!=TCPConnection::takeData(len,wp))      {
-      TTCPS2_LOGGER.warn("HTTPHandler::handle(): len!=TCPConnection::takeData(len,wp)");
+    len = takeData(len,wp);
+    if(0>len){
+      TTCPS2_LOGGER.warn("HTTPHandler::handle(): 0>takeData()");
       return -1;
     }
     unParsed->push(len);
 
-    // auto rp = unParsed->getReadingPtr(len,len);
-    if(1 > unParsed->getLength()){
-      TTCPS2_LOGGER.warn("HTTPHandler::handle(): 1 > unParsed->getLength()");
+    if(1 > unParsed->getLength()) break;
+    auto rp = **unParsed;
+    len = http_parser_execute(&parser, &settings, (const char*)rp, unParsed->getLength());
+    if(0>len){
+      TTCPS2_LOGGER.warn("HTTPHandler::handle(): 0>http_parser_execute()");
       return -1;
     }
-    auto rp = **unParsed;
-    unParsed->pop(
-      http_parser_execute(&parser, &settings, (const char*)rp, len));
+    unParsed->pop(len);
     if(unParsed->getLength() > 0){//中途出差错了，所以没解析完
       TTCPS2_LOGGER.warn("HTTPHandler::handle(): something wrong when parsing HTTP data.");
       return -1;

@@ -87,42 +87,74 @@ int NetIOReactor::_readCallback(Event const& toHandle){
   // 向线程池追加任务
   EpollEvent _toHandle(dynamic_cast<EpollEvent const&>(toHandle));
   if(! server->tp->addTask([conn, this, _toHandle](){//@ThreadPool线程
-    if(0>conn->handle()){
-      TTCPS2_LOGGER.warn("@ThreadPool: something wrong when handling data from socket {0}.", _toHandle.fd);
-    }else{
-      TTCPS2_LOGGER.trace("@ThreadPool: data from socket {0} been handled.", _toHandle.fd);
-    }
-    // 处理数据后，让NetIOReactor负责发送
-    this->addPendingTask([conn, this, _toHandle](){//@(当前reactor所在的)网络IO线程
-    // this->addTimerTask(TimerTask(false, 1000, [conn, this, _toHandle](){//测试：延迟一秒发送
-      
-      // 尽量发
-      int length;
-      while(true){
-        length = conn->sendToSocket(LENGTH_PER_SEND);
-        if(0>length){//客户端不再能正常通信
-          this->_errorCallback(_toHandle);
-          return;
-        }else if(0==length){//暂时不能再写数据了
-          break;
-        }else{//写了一些数据
-          TTCPS2_LOGGER.trace("NetIOReactor::doPendingTasks(): [lambda] write {0} bytes to socket {1}.", length,_toHandle.fd);
-        }
-      }
 
-      if(0 < conn->getUnsentLength()){//没发完
-        // 可写事件加入监听
-        this->removeEvent([_toHandle](Event const& e){
+    if(0>conn->handle()){//数据处理出错
+      TTCPS2_LOGGER.warn("@ThreadPool: something wrong when handling data from socket {0}.", _toHandle.fd);
+
+      // 干脆直接不要这个TCP连接了，执行_errorCallback()的内部步骤
+      if(true){
+
+        // 移除这个socket的被监听的事件
+        int ret = removeEvent([_toHandle](Event const& e)->bool{
           return _toHandle.fd == e.getFD();
         });
-        if(1 > this->addEvent(EpollEvent(EPOLLIN|EPOLLOUT, _toHandle.fd))){
-          TTCPS2_LOGGER.warn("NetIOReactor::doPendingTasks(): [lambda] fail to listen to EPOLLIN|EPOLLOUT of socket {0}.", _toHandle.fd);
+        if(0>ret){
+          TTCPS2_LOGGER.warn("@ThreadPool: fail to stop listening to the error client {0}.", _toHandle.fd);
+        }else if(0==ret){
+          TTCPS2_LOGGER.trace("@ThreadPool: no Event needs to be removed.");
+        }else{
+          TTCPS2_LOGGER.info("@ThreadPool: {0} events of client socket {1} been removed.", ret, _toHandle.fd);
         }
-      }
 
-    });
-    // }));//测试：延迟一秒发送
-    TTCPS2_LOGGER.trace("@ThreadPool: task to send response to socket {0} been added to pending queue.", _toHandle.fd);
+        // 移出connections; ~TCPConnetion()负责close(FD)
+        {//先从NetIOReactor的集合移出
+          LG lg(m_connections);
+          connections.erase(_toHandle.fd);
+        }
+        {
+          LG lg(server->m_connections);
+          server->connections.erase(_toHandle.fd);
+        }
+        TTCPS2_LOGGER.info("@ThreadPool: the TCPConnection of socket {0} has been discarded.", _toHandle.fd);
+
+      }
+      
+    }else{//数据处理顺利
+      TTCPS2_LOGGER.trace("@ThreadPool: data from socket {0} been handled.", _toHandle.fd);
+
+      // 顺利处理数据后，让NetIOReactor负责发送
+      this->addPendingTask([conn, this, _toHandle](){//@(当前reactor所在的)网络IO线程
+      // this->addTimerTask(TimerTask(false, 1000, [conn, this, _toHandle](){//测试：延迟一秒发送
+        
+        // 尽量发
+        int length;
+        while(true){
+          length = conn->sendToSocket(LENGTH_PER_SEND);
+          if(0>length){//客户端不再能正常通信
+            this->_errorCallback(_toHandle);
+            return;
+          }else if(0==length){//暂时不能再写数据了
+            break;
+          }else{//写了一些数据
+            TTCPS2_LOGGER.trace("NetIOReactor::doPendingTasks(): [lambda] write {0} bytes to socket {1}.", length,_toHandle.fd);
+          }
+        }
+
+        if(0 < conn->getUnsentLength()){//没发完
+          // 可写事件加入监听
+          this->removeEvent([_toHandle](Event const& e){
+            return _toHandle.fd == e.getFD();
+          });
+          if(1 > this->addEvent(EpollEvent(EPOLLIN|EPOLLOUT, _toHandle.fd))){
+            TTCPS2_LOGGER.warn("NetIOReactor::doPendingTasks(): [lambda] fail to listen to EPOLLIN|EPOLLOUT of socket {0}.", _toHandle.fd);
+          }
+        }
+
+      });
+      // }));//测试：延迟一秒发送
+      TTCPS2_LOGGER.trace("@ThreadPool: task to send response to socket {0} been added to pending queue.", _toHandle.fd);
+
+    }
 
   })){//追加任务失败
     TTCPS2_LOGGER.warn("NetIOReactor::_readCallback(): fail to add task to ThreadPool.");
