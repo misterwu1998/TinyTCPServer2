@@ -19,7 +19,6 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
-#include "spdlog/spdlog.h"
 
 namespace TTCPS2
 {
