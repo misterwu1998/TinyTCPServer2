@@ -27,7 +27,7 @@ HTTPRequest& HTTPRequest::set(std::string const& url){
 
 HTTPRequest& HTTPRequest::append(const void* data, uint32_t length){
   auto& r = *this;
-  if(! r.body) r.body = std::make_shared<TTCPS2::Buffer>(length);
+  if(! r.body) r.body = std::make_shared<Buffer>(length);
   auto wp = (*(r.body))[length];
   if(NULL==wp){
     TTCPS2_LOGGER.warn("HTTPRequest::append(): r.body is filled.");
@@ -92,7 +92,7 @@ HTTPResponse& HTTPResponse::append(const void* data, uint32_t length){
     r.header.erase(it);
   }
 
-  if(!(r.body)) r.body = std::make_shared<TTCPS2::Buffer>(length);
+  if(!(r.body)) r.body = std::make_shared<Buffer>(length);
   // uint32_t len; auto wp = r.body->getWritingPtr(length,len);
   auto wp = (*(r.body))[length];
   if(NULL==wp){

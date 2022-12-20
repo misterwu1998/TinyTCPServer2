@@ -34,7 +34,7 @@ public:
   
 };
 
-bool operator<=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b);
-bool operator>=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b);
+bool operator<=(EpollEvent const& a, EpollEvent const& b);
+bool operator>=(EpollEvent const& a, EpollEvent const& b);
 
 #endif // _EpollEvent_hpp

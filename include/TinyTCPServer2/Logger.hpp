@@ -39,7 +39,7 @@
 
   };
 
-#define TTCPS2_SPD_LOGGER (*(TTCPS2::Logger::initOrGet())) 
+#define TTCPS2_SPD_LOGGER (*(Logger::initOrGet())) 
 #define TTCPS2_LOGGER TTCPS2_SPD_LOGGER 
 
 #endif // _Logger_hpp

@@ -34,10 +34,10 @@ bool EpollEvent::operator>(EpollEvent const& another){
   return fd>another.fd || (fd==another.fd && events>another.fd);
 }
 
-bool operator<=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b){
+bool operator<=(EpollEvent const& a, EpollEvent const& b){
   return a.fd<b.fd || (a.fd==b.fd && a.events<=b.events);
 }
 
-bool operator>=(TTCPS2::EpollEvent const& a, TTCPS2::EpollEvent const& b){
+bool operator>=(EpollEvent const& a, EpollEvent const& b){
   return a.fd>b.fd || (a.fd==b.fd && a.events>=b.events);
 }
