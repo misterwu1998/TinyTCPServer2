@@ -95,7 +95,12 @@ namespace TTCPS2
       if(!THIS->requestNow->body){//还未创建Buffer
         THIS->requestNow->body = std::make_shared<Buffer>(length);
       }
-      uint32_t al; auto wp = THIS->requestNow->body->getWritingPtr(length,al);
+      // uint32_t al; auto wp = THIS->requestNow->body->getWritingPtr(length,al);
+      auto wp = THIS->requestNow->body->operator[](length);
+      if(NULL==wp){
+        TTCPS2_LOGGER.warn("HTTPHandler::onBody(): THIS->requestNow->body->operator[](length)");
+        return -1;
+      }
       memcpy(wp,at,length);
       THIS->requestNow->body->push(length);
     }
@@ -145,12 +150,13 @@ namespace TTCPS2
 
     // 对于定长body的响应，拷贝完才发；对于不定长的body，拷贝一批数据就提醒底层发一次
     if(res->body && res->body->getLength()>0){//有定长的body要发
-      uint32_t len; auto rp = res->body->getReadingPtr(res->body->getLength(), len);
-      if(0>THIS->bringData(rp,len)){
-        TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): 0>THIS->bringData(rp,len)");
+      auto rp = **(res->body);
+      auto ret = THIS->bringData(rp, res->body->getLength());
+      if(0>ret){
+        TTCPS2_LOGGER.warn("HTTPHandler::onMessageComplete(): 0>ret");
         return -1;
       }
-      res->body->pop(len);
+      res->body->pop(ret);
     }else if(! res->filePath.empty()){//分块传输模式
       std::ifstream f(res->filePath, std::ios::in | std::ios::binary);
       if(f.is_open()){//文件存在，才有内容可发
@@ -213,19 +219,30 @@ namespace TTCPS2
     }
 
     while(true){
-      uint32_t len; auto wp = unParsed->getWritingPtr(TCPConnection::getUnprocessedLength(), len);
-      if(1>len) break;
-      if(len!=TCPConnection::takeData(len,wp)){
+      // uint32_t len; auto wp = unParsed->getWritingPtr(TCPConnection::getUnprocessedLength(), len);
+      auto len = TCPConnection::getUnprocessedLength();
+      auto wp = (*unParsed)[len];
+      if(NULL==wp){
+        TTCPS2_LOGGER.warn("HTTPHandler::handle(): the Buffer 'unParsed' is filled.");
+        return -1;
+      }
+      if(len!=TCPConnection::takeData(len,wp))      {
         TTCPS2_LOGGER.warn("HTTPHandler::handle(): len!=TCPConnection::takeData(len,wp)");
         return -1;
       }
       unParsed->push(len);
 
-      auto rp = unParsed->getReadingPtr(len,len);
-      unParsed->pop(http_parser_execute(&parser, &settings, (char*)rp, len));
-      if(unParsed->getLength()>0){//中途出差错了，所以没解析完
+      // auto rp = unParsed->getReadingPtr(len,len);
+      if(1 > unParsed->getLength()){
+        TTCPS2_LOGGER.warn("HTTPHandler::handle(): 1 > unParsed->getLength()");
+        return -1;
+      }
+      auto rp = **unParsed;
+      unParsed->pop(
+        http_parser_execute(&parser, &settings, (const char*)rp, len));
+      if(unParsed->getLength() > 0){//中途出差错了，所以没解析完
         TTCPS2_LOGGER.warn("HTTPHandler::handle(): something wrong when parsing HTTP data.");
-        break;
+        return -1;
       }
     }
 

@@ -32,52 +32,32 @@ namespace TTCPS2
     return firstBlank-firstData;
   }
 
-  void* Buffer::getWritingPtr(unsigned int expectedLength, unsigned int& actualLength){
+  void* Buffer::operator[](unsigned int expectedLength){
+    firstBlank %= capacity;
+    firstData %= capacity;
 
-    if(expectedLength > capacity-getLength()){//容量不够
-      if(capacity>=MAX_BUFFER_SIZE){//不允许再扩容了
-
-        // 把数据移动到头部（左移firstData字节），容量剩多少就多少
-        memmove(data, data+firstData, firstBlank-firstData);
-        firstBlank -= firstData;
-        firstData = 0;
-        actualLength = capacity-firstBlank;
-        return data+firstBlank;
-
-      }else{//还可以扩容
-
-        // 目标容量
-        while(capacity < getLength() + (expectedLength<<1)) capacity<<=1; // 限制容量取值为2的若干次幂// capacity = (expectedLength<<1) + getLength();//在现有数据量的基础上留两倍的expectedLength
-        if(MAX_BUFFER_SIZE<capacity){//目标容量过大
-          capacity = MAX_BUFFER_SIZE;
-        }
-        TTCPS2_LOGGER.trace("Buffer::getWritingPtr(): capacity of Buffer comes to {0}.", this->capacity);
-        data = ::realloc(data,capacity);
-
-        // 移动数据到头部（左移firstData字节）
-        memmove(data, data+firstData, firstBlank-firstData);
-        firstBlank -= firstData;
-        firstData = 0;
-        actualLength = (firstBlank+expectedLength <= capacity) ? expectedLength:(capacity-firstBlank);//余量可能达不到期望
-        return data+firstBlank;
-
-      }
-    }else{//容量还够
-      if(firstBlank+expectedLength <= capacity){//右侧还有足够的连续空间
-        actualLength = expectedLength;
-        return data+firstBlank;
-      }else{//容量够，但不连续
-      
-        // 移动数据到头部（左移firstData字节）
-        memmove(data, data+firstData, firstBlank-firstData);
-        firstBlank -= firstData;
-        firstData = 0;
-        actualLength = expectedLength;
-        return data+firstBlank;
-
-      }
+    // 已有的数据挪到头部
+    if(firstData>0){
+      memmove(data, data+firstData, firstBlank-firstData);
+      firstBlank -= firstData;
+      firstData = 0; 
     }
 
+    if(firstBlank+expectedLength<=capacity){//容量还够用
+      return data+firstBlank;
+    }//容量不够
+
+    unsigned int c = capacity;
+    while(c<=MAX_BUFFER_SIZE && firstBlank+expectedLength>c){//还没爆表，并且容量仍然不够
+      c <<= 1;
+    }
+    if(c>MAX_BUFFER_SIZE){//容量爆表了
+      return NULL;
+    }
+
+    data = realloc(data,c);
+    capacity = c;
+    return data+firstBlank;
   }
 
   int64_t Buffer::push(unsigned int length){
@@ -88,9 +68,16 @@ namespace TTCPS2
     return length;
   }
 
-  const void* Buffer::getReadingPtr(unsigned int expectedLength, unsigned int& actualLength){
-    actualLength = std::min(expectedLength, firstBlank-firstData);
-    return data+firstData;
+  const void* Buffer::operator*(){
+    firstBlank %= capacity;
+    firstData %= capacity;
+    if(firstBlank==firstData) return NULL;
+    if(firstData>0){
+      memmove(data, data+firstData, firstBlank-firstData);
+      firstBlank -= firstData;
+      firstData = 0;
+    }
+    return data;
   }
 
   int64_t Buffer::pop(unsigned int length){
@@ -127,20 +114,21 @@ namespace TTCPS2
 } // namespace TTCPS2
 
 std::istream& operator>>(std::istream& i, TTCPS2::Buffer& b){
-  uint32_t l; void* wp;
+  void* wp;
   while(!i.eof()){
-    wp = b.getWritingPtr(512,l);
-    if(l<1) return i;  
-    i.read((char*)wp,l);
+    wp = b[512];
+    if(NULL==wp) return i; 
+    i.read((char*)wp, 512);
     b.push(i.gcount());
   }
   return i;
 }
 
 std::ostream& operator<<(std::ostream& o, TTCPS2::Buffer& b){
-  uint32_t l; auto rp = b.getReadingPtr(b.getLength(), l);
-  o.write((const char*)rp,l);
-  b.pop(l);
+  auto rp = *b;
+  if(NULL==rp) return o;
+  o.write((const char*)rp, b.getLength());
+  b.pop(b.getLength());
   return o;
 }
 

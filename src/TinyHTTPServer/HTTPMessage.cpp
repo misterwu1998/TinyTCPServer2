@@ -1,5 +1,6 @@
 #include "TinyHTTPServer/HTTPMessage.hpp"
 #include "util/Buffer.hpp"
+#include "TinyTCPServer2/Logger.hpp"
 #include <string.h>
 
 namespace TTCPS2
@@ -29,10 +30,13 @@ namespace TTCPS2
   HTTPRequest& HTTPRequest::append(const void* data, uint32_t length){
     auto& r = *this;
     if(! r.body) r.body = std::make_shared<TTCPS2::Buffer>(length);
-    uint32_t len; auto wp = r.body->getWritingPtr(length, len);
-    if(1>len) return r;
-    memcpy(wp, data, len);
-    r.body->push(len);
+    auto wp = (*(r.body))[length];
+    if(NULL==wp){
+      TTCPS2_LOGGER.warn("HTTPRequest::append(): r.body is filled.");
+      return r;
+    }
+    memcpy(wp, data, length);
+    r.body->push(length);
     
     auto it = r.header.find("Content-Length");
     if(it==r.header.end()) r.header.insert({"Content-Length", std::to_string(r.body->getLength())});
@@ -91,9 +95,14 @@ namespace TTCPS2
     }
 
     if(!(r.body)) r.body = std::make_shared<TTCPS2::Buffer>(length);
-    uint32_t len; auto wp = r.body->getWritingPtr(length,len);
-    memcpy(wp, data, len);
-    r.body->push(len);
+    // uint32_t len; auto wp = r.body->getWritingPtr(length,len);
+    auto wp = (*(r.body))[length];
+    if(NULL==wp){
+      TTCPS2_LOGGER.warn("HTTPResponse::append(): r.body is filled.");
+      return r;
+    }
+    memcpy(wp, data, length);
+    r.body->push(length);
 
     it = r.header.find("Content-Length");
     if(it==r.header.end()) r.header.insert({"Content-Length", std::to_string(r.body->getLength())});

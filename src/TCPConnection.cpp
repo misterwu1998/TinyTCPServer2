@@ -34,23 +34,20 @@ namespace TTCPS2
     }
       
     void* buf;
-    unsigned int actualLength;
     int ret;
 
     // 读缓冲区要被写
     LG lg(m_rb);
-    buf = rb->getWritingPtr(LENGTH_PER_RECV,actualLength);
-    if(actualLength<1){//实在没位置了
+    buf = (*rb)[LENGTH_PER_RECV];
+    if(NULL==buf){
       TTCPS2_LOGGER.info(
         "TCPConnection::readFromSocket(): Buffer of client socket {0} can contain no more data!",
         this->clientSocket      );
       return 0;
-    }else{
-      TTCPS2_LOGGER.trace("TCPConnection::readFromSocket(): Buffer of client socket {0} can contain {1} bytes more.", clientSocket,actualLength);
     }
 
     // 从内核读取，放进读缓冲
-    ret = ::recv(clientSocket,buf,actualLength, MSG_NOSIGNAL|MSG_DONTWAIT);
+    ret = ::recv(clientSocket,buf, LENGTH_PER_RECV, MSG_NOSIGNAL|MSG_DONTWAIT);
     if(ret>0){//正常收取
       TTCPS2_LOGGER.trace(
         "TCPConnection::readFromSocket(): receive {0} bytes from client socket {1}.",
@@ -92,7 +89,7 @@ namespace TTCPS2
     }
 
     // 读缓冲要被读
-    const void* pRead = rb->getReadingPtr(actualLength,actualLength);
+    auto pRead = **rb;
     memcpy(dst,pRead,actualLength);
     if(actualLength != rb->pop(actualLength)){
       TTCPS2_LOGGER.warn("TCPConnection::takeData(): something wrong when rb->pop() of client socket {0}.", clientSocket);
@@ -180,19 +177,18 @@ namespace TTCPS2
     }
 
     LG lg(m_wb);
-    uint32_t actualLength;
-    void* pw = wb->getWritingPtr(length,actualLength);
-    if(1>actualLength){//实在没位置了
+    auto pw = (*wb)[length];
+    if(NULL==pw){
       TTCPS2_LOGGER.info("TCPConnection::bringData(): writing buffer of client {0} is filled now.", clientSocket);
       return 0;
     }
-    memcpy(pw,src,actualLength);
-    if(actualLength!=wb->push(actualLength)){
+    memcpy(pw,src,length);
+    if(length!=wb->push(length)){
       TTCPS2_LOGGER.warn("TCPConnection::bringData(): something wrong when wb->push(); client socket is {0}.", clientSocket);
       return -1;
     }
-    TTCPS2_LOGGER.trace("TCPConnection::bringData(): {0} bytes have been brought to the writing Buffer of socket {1}.", actualLength,clientSocket);
-    return actualLength;
+    TTCPS2_LOGGER.trace("TCPConnection::bringData(): {0} bytes have been brought to the writing Buffer of socket {1}.", length,clientSocket);
+    return length;
   }
 
   int TCPConnection::getUnsentLength(){
@@ -206,14 +202,14 @@ namespace TTCPS2
       return -1;
     }
 
-    uint32_t actualLength;
+    uint32_t actualLength = wb->getLength();
     const void* pr;
     LG lg(m_wb);
-    pr = wb->getReadingPtr(length,actualLength);
-    if(actualLength<1){
+    if(actualLength < 1){
       TTCPS2_LOGGER.trace("TCPConnection::sendToSocket(): client {0} has nothing to send now.", clientSocket);
       return 0;
     }
+    pr = **wb;
 
     int ret = ::send(clientSocket,pr,actualLength, MSG_NOSIGNAL|MSG_DONTWAIT);
     if(ret>0){//正常发送

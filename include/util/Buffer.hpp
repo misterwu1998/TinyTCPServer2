@@ -41,6 +41,11 @@ namespace TTCPS2
      */
     void* getWritingPtr(unsigned int expectedLength, unsigned int& actualLength);
 
+    /// @brief 暴露空闲空间首地址
+    /// @param expectedLength 期望多大的连续空间（字节）
+    /// @return 空闲空间首地址，或NULL表示expectedLength字节的连续空间无法开辟
+    void* operator[](unsigned int expectedLength);
+
     /**
      * @brief 标记新增数据量; 调用getWritingPtr()并拷贝数据之后，标记才是有意义的
      * @param length 
@@ -55,6 +60,9 @@ namespace TTCPS2
      * @return const void* 未读数据的首地址（禁止释放）
      */
     const void* getReadingPtr(unsigned int expectedLength, unsigned int& actualLength);
+      
+    /// @return 缓冲区内未读数据的首地址；或NULL表示当前没有未读的数据
+    const void* operator*();
     
     /**
      * @brief 丢弃队头数据
