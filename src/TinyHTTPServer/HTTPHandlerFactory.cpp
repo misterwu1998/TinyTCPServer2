@@ -4,32 +4,29 @@
 #include "TinyHTTPServer/HTTPMessage.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 
-namespace TTCPS2
-{
-  HTTPHandlerFactory::HTTPHandlerFactory(){
-    // 不定长的body需要创建文件来保存，需要保证目录存在
-    if(0!=system("mkdir -p ./temp/")) exit(-1);
-  }
+HTTPHandlerFactory::HTTPHandlerFactory(){
+  // 不定长的body需要创建文件来保存，需要保证目录存在
+  if(0!=system("mkdir -p ./temp/")) exit(-1);
+}
 
-  int HTTPHandlerFactory::route(http_method method, std::string const& path, std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)> const& callback){
-    auto& m = router[method];
-    auto it = m.find(path);
-    if(it!=m.end()){
-      it->second = callback;
-      return 0;
-    }else{
-      m.insert({path,callback});
-      return 1;
-    }
+int HTTPHandlerFactory::route(http_method method, std::string const& path, std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)> const& callback){
+  auto& m = router[method];
+  auto it = m.find(path);
+  if(it!=m.end()){
+    it->second = callback;
+    return 0;
+  }else{
+    m.insert({path,callback});
+    return 1;
   }
+}
 
-  std::shared_ptr<TCPConnection> HTTPHandlerFactory::operator()(NetIOReactor* netIOReactor, int clientSocket){
-    return std::static_pointer_cast<TCPConnection, HTTPHandler>(
-      std::make_shared<HTTPHandler>(netIOReactor,clientSocket, router)    );
-  }
-  
-  HTTPHandlerFactory::~HTTPHandlerFactory(){}
-} // namespace TTCPS2
+std::shared_ptr<TCPConnection> HTTPHandlerFactory::operator()(NetIOReactor* netIOReactor, int clientSocket){
+  return std::static_pointer_cast<TCPConnection, HTTPHandler>(
+    std::make_shared<HTTPHandler>(netIOReactor,clientSocket, router)    );
+}
+
+HTTPHandlerFactory::~HTTPHandlerFactory(){}
 
 // #if 0
 // namespace TTCPS2
