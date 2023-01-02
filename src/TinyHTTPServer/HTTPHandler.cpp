@@ -115,21 +115,25 @@ int HTTPHandler::onMessageComplete(http_parser* parser){
   
   // 消费掉request，给出response
   std::shared_ptr<HTTPResponse> res;
-  if(THIS->router.count(THIS->requestNow->method)<1
-  || THIS->router.at(THIS->requestNow->method).count(THIS->requestNow->url)<1){//404
-    /// 404
+  for(auto& p : THIS->router){
+    auto& predicate = p.first;
+    auto& callback = p.second;
+    if(predicate(THIS->requestNow)){//找到一个谓词是当前HTTP请求所满足的
+      res = callback(THIS->requestNow);
+      if(!res){//回调函数应对不了当前HTTP请求
+        // 400
+        TTCPS2_LOGGER.info("HTTPHandler::onMessageComplete(): fail to respond the HTTP request.");
+        res = std::make_shared<HTTPResponse>();
+        res->set(http_status::HTTP_STATUS_BAD_REQUEST);
+      }
+      break;//后面的谓词就轮不到了
+    }
+  }
+  if(!res){//没有找到哪个谓词是当前HTTP请求所满足的
+    // 404
     TTCPS2_LOGGER.info("HTTPHandler::onMessageComplete(): 404");
     res = std::make_shared<HTTPResponse>();
     res->set(http_status::HTTP_STATUS_NOT_FOUND);
-  }else{
-    auto cb = THIS->router.at(THIS->requestNow->method).at(THIS->requestNow->url);
-    res = cb(THIS->requestNow);
-    if(!res){
-      TTCPS2_LOGGER.info("HTTPHandler::onMessageComplete(): fail to respond the HTTP request.");
-      /// 400
-      res = std::make_shared<HTTPResponse>();
-      res->set(http_status::HTTP_STATUS_BAD_REQUEST);
-    }
   }
   THIS->requestNow = nullptr;
 
@@ -189,14 +193,13 @@ int HTTPHandler::onMessageComplete(http_parser* parser){
 HTTPHandler::HTTPHandler(
     NetIOReactor* netIOReactor
   , int clientSocket
-  , std::unordered_map<
-      http_method,
-      std::unordered_map<
-          std::string
-        , std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)>>> const& router
+  , std::vector<std::pair<
+      std::function<bool (std::shared_ptr<HTTPRequest>)>,
+      std::function<std::shared_ptr<HTTPResponse> (std::shared_ptr<HTTPRequest>)>
+    >> const& router
 ) : TCPConnection(netIOReactor,clientSocket)
-  , router(router)
-  , unParsed(new Buffer()){
+  , unParsed(new Buffer())
+  , router(router){
   http_parser_init(&parser, http_parser_type::HTTP_REQUEST);
   parser.data = this;
 

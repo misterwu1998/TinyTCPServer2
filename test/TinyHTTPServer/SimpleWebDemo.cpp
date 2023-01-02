@@ -24,60 +24,85 @@ int main(int argc, char const *argv[])
   std::shared_ptr<HTTPHandlerFactory> HTTPSettings(
     std::make_shared<HTTPHandlerFactory>()  );
 
-  HTTPSettings->route(http_method::HTTP_GET, "/hello", [](std::shared_ptr<HTTPRequest> req){
-    auto res = std::make_shared<HTTPResponse>();
-    res->set(http_status::HTTP_STATUS_OK)
-        .set("Server","github.com/misterwu1998/TinyTCPServer2")
-        .set("Content-Type","text/html")
-        .append("Hello!",7);
-    return res;
-  });
+  HTTPSettings->route(
+    [](std::shared_ptr<HTTPRequest> req){
+      return req->method==http_method::HTTP_GET && req->url=="/hello";
+    },
+    [](std::shared_ptr<HTTPRequest> req){
+      auto res = std::make_shared<HTTPResponse>();
+      res->set(http_status::HTTP_STATUS_OK)
+          .set("Server","github.com/misterwu1998/TinyTCPServer2")
+          .set("Content-Type","text/html")
+          .append("Hello!",7);
+      return res;
+    }
+  );
 
-  HTTPSettings->route(http_method::HTTP_GET, "/login.html", [](std::shared_ptr<HTTPRequest> req){
-    std::fstream f(
-      loadConfigure()["login"]
-    , std::ios::in    );
-    char buf[1024];
-    f.read(buf,1024);
+  HTTPSettings->route(
+    [](std::shared_ptr<HTTPRequest> req){
+      return req->method==http_method::HTTP_GET && req->url=="/login.html";
+    },
+    [](std::shared_ptr<HTTPRequest> req){
+      std::fstream f(
+        loadConfigure()["login"]
+      , std::ios::in    );
+      char buf[1024];
+      f.read(buf,1024);
 
-    auto res = std::make_shared<HTTPResponse>();
-    res->set(http_status::HTTP_STATUS_OK)
-        .set("Server","github.com/misterwu1998/TinyTCPServer2")
-        .set("Content-Type","text/html")
-        .append(buf, f.gcount());
-    return res;
-  });
+      auto res = std::make_shared<HTTPResponse>();
+      res->set(http_status::HTTP_STATUS_OK)
+          .set("Server","github.com/misterwu1998/TinyTCPServer2")
+          .set("Content-Type","text/html")
+          .append(buf, f.gcount());
+      return res;
+    }
+  );
 
-  HTTPSettings->route(http_method::HTTP_GET, "/register.html", [](std::shared_ptr<HTTPRequest> req){
-    std::fstream f(
-      loadConfigure()["register"]
-    , std::ios::in    );
-    char buf[1024];
-    f.read(buf,1024);
+  HTTPSettings->route(
+    [](std::shared_ptr<HTTPRequest> req){
+      return req->method==http_method::HTTP_GET && req->url=="/register.html";
+    },
+    [](std::shared_ptr<HTTPRequest> req){
+      std::fstream f(
+        loadConfigure()["register"]
+      , std::ios::in    );
+      char buf[1024];
+      f.read(buf,1024);
 
-    auto res = std::make_shared<HTTPResponse>();
-    res->set(http_status::HTTP_STATUS_OK)
-        .set("Server","github.com/misterwu1998/TinyTCPServer2")
-        .set("Content-Type","text/html")
-        .append(buf, f.gcount());
-    return res;
-  });
+      auto res = std::make_shared<HTTPResponse>();
+      res->set(http_status::HTTP_STATUS_OK)
+          .set("Server","github.com/misterwu1998/TinyTCPServer2")
+          .set("Content-Type","text/html")
+          .append(buf, f.gcount());
+      return res;
+    }
+  );
 
-  HTTPSettings->route(http_method::HTTP_GET, "/chunked", [](std::shared_ptr<HTTPRequest> req){
-    auto res = std::make_shared<HTTPResponse>();
-    res->set(http_status::HTTP_STATUS_OK)
-        .set("Content-Type","text/html")
-        .set_chunked(loadConfigure()["register"]);
-    return res;
-  });
+  HTTPSettings->route(
+    [](std::shared_ptr<HTTPRequest> req){
+      return req->method==http_method::HTTP_GET && req->url=="/chunked";
+    },
+    [](std::shared_ptr<HTTPRequest> req){
+      auto res = std::make_shared<HTTPResponse>();
+      res->set(http_status::HTTP_STATUS_OK)
+          .set("Content-Type","text/html")
+          .set_chunked(loadConfigure()["register"]);
+      return res;
+    }
+  );
 
-  HTTPSettings->route(http_method::HTTP_GET, "/bean.jpg", [](std::shared_ptr<HTTPRequest> req){
-    auto res = std::make_shared<HTTPResponse>();
-    res->set(http_status::HTTP_STATUS_OK)
-        .set("Content-Type","image/jpeg")
-        .set_chunked(loadConfigure()["bean"]);
-    return res;
-  });
+  HTTPSettings->route(
+    [](std::shared_ptr<HTTPRequest> req){
+      return req->method==http_method::HTTP_GET && req->url=="/bean.jpg";
+    },
+    [](std::shared_ptr<HTTPRequest> req){
+      auto res = std::make_shared<HTTPResponse>();
+      res->set(http_status::HTTP_STATUS_OK)
+          .set("Content-Type","image/jpeg")
+          .set_chunked(loadConfigure()["bean"]);
+      return res;
+    }
+  );
 
   // TinyHTTPServer tws(
   //     "127.0.0.1", 6324,32,1,HTTPSettings
