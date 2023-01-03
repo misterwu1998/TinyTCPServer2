@@ -4,7 +4,7 @@
 #include "./EventLoop.hpp"
 #include "TinyTCPServer2/Logger.hpp"
 #include "./Event.hpp"
-#include "util/TimerTask.hpp"
+#include "util/Time.hpp"
 
 #define LG std::lock_guard<std::mutex>
 #define TTQ std::priority_queue<TimerTask, std::vector<TimerTask>, std::function<bool(TimerTask const&, TimerTask const&)>>
@@ -13,7 +13,10 @@
 
 EventLoop::EventLoop()
 : running(true)
-, ttq(TimerTask::notEarlier){
+, ttq([](TimerTask const& a, TimerTask const& b){
+    return a.nextTimestamp >= b.nextTimestamp;
+  }
+){
   eventFD = eventfd(0, EFD_NONBLOCK|EFD_CLOEXEC);
   if(0>eventFD){
     TTCPS2_LOGGER.error("EventLoop::EventLoop(): 0>eventFD");
@@ -128,7 +131,7 @@ int EventLoop::addTimerTask(TimerTask const& tt){
 
 int EventLoop::removeTimerTask(std::function<bool (TimerTask const&)> filter){
   int count = 0;
-  TTQ temp(TimerTask::notEarlier);
+  TTQ temp([](TimerTask const& a, TimerTask const& b){return a.nextTimestamp>=b.nextTimestamp;});
   {
     LG lg(m_ttq);
     temp.swap(ttq);
@@ -148,7 +151,7 @@ int EventLoop::removeTimerTask(std::function<bool (TimerTask const&)> filter){
 int EventLoop::doTimerTasks(){
   TTCPS2_LOGGER.trace("EventLoop::doTimerTasks(): start");
   int count = 0;
-  TTQ temp(TimerTask::notEarlier);
+  TTQ temp([](TimerTask const& a, TimerTask const& b){return a.nextTimestamp>=b.nextTimestamp;});
   {
     LG lg(m_ttq);
     temp.swap(ttq);

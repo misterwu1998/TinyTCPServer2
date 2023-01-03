@@ -44,7 +44,7 @@ int main(int argc, char const *argv[])
     },
     [](std::shared_ptr<HTTPRequest> req){
       std::fstream f(
-        loadConfigure()["login"]
+        loadConfigure("../conf/resources.properties")["login"]
       , std::ios::in    );
       char buf[1024];
       f.read(buf,1024);
@@ -64,7 +64,7 @@ int main(int argc, char const *argv[])
     },
     [](std::shared_ptr<HTTPRequest> req){
       std::fstream f(
-        loadConfigure()["register"]
+        loadConfigure("../conf/resources.properties")["register"]
       , std::ios::in    );
       char buf[1024];
       f.read(buf,1024);
@@ -86,7 +86,7 @@ int main(int argc, char const *argv[])
       auto res = std::make_shared<HTTPResponse>();
       res->set(http_status::HTTP_STATUS_OK)
           .set("Content-Type","text/html")
-          .set_chunked(loadConfigure()["register"]);
+          .set_chunked(loadConfigure("../conf/resources.properties")["register"]);
       return res;
     }
   );
@@ -99,7 +99,7 @@ int main(int argc, char const *argv[])
       auto res = std::make_shared<HTTPResponse>();
       res->set(http_status::HTTP_STATUS_OK)
           .set("Content-Type","image/jpeg")
-          .set_chunked(loadConfigure()["bean"]);
+          .set_chunked(loadConfigure("../conf/resources.properties")["bean"]);
       return res;
     }
   );
