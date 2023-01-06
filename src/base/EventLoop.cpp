@@ -131,7 +131,10 @@ int EventLoop::addTimerTask(TimerTask const& tt){
 
 int EventLoop::removeTimerTask(std::function<bool (TimerTask const&)> filter){
   int count = 0;
-  TTQ temp([](TimerTask const& a, TimerTask const& b){return a.nextTimestamp>=b.nextTimestamp;});
+  TTQ temp(
+    [](TimerTask const& a,
+       TimerTask const& b){
+        return a.nextTimestamp>=b.nextTimestamp;});
   {
     LG lg(m_ttq);
     temp.swap(ttq);

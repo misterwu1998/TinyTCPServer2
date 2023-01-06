@@ -1,6 +1,7 @@
 #include "TinyHTTPServer/TinyHTTPServer.hpp"
 #include "TinyHTTPServer/HTTPHandlerFactory.hpp"
 #include "TinyTCPServer2/TinyTCPServer2.hpp"
+#include "util/Time.hpp"
 
 TinyHTTPServer::TinyHTTPServer(
     const char* ip
@@ -16,6 +17,14 @@ TinyHTTPServer::TinyHTTPServer(
 
 int TinyHTTPServer::run(){
   return this->tcpServer->run();
+}
+
+int TinyHTTPServer::addTimerTask(TimerTask const& t){
+  return tcpServer->addTimerTask(t);
+}
+
+int TinyHTTPServer::removeTimerTask(std::function<bool (TimerTask const&)> filter){
+  return tcpServer->removeTimerTask(filter);
 }
 
 int TinyHTTPServer::shutdown(){

@@ -1,13 +1,14 @@
+#include <iostream>
+#include "TinyTCPServer2/Logger.hpp"
 #include "TinyHTTPServer/TinyHTTPServer.hpp"
 #include "TinyHTTPServer/HTTPHandlerFactory.hpp"
 #include "TinyHTTPServer/HTTPHandler.hpp"
+#include "TinyHTTPServer/HTTPMessage.hpp"
 #include "util/ThreadPool.hpp"
 #include "util/Buffer.hpp"
-#include <iostream>
-#include "TinyTCPServer2/Logger.hpp"
-#include "spdlog/sinks/rotating_file_sink.h"
-#include "TinyHTTPServer/HTTPMessage.hpp"
 #include "util/Config.hpp"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "util/Time.hpp"
 
 int main(int argc, char const *argv[])
 {
@@ -108,10 +109,13 @@ int main(int argc, char const *argv[])
   //     "127.0.0.1", 6324,32,1,HTTPSettings
   //   , &(ThreadPool::getPool(1)));
   TinyHTTPServer tws(
-    "127.0.0.1", 6324, 128, 4, HTTPSettings
-  , &(ThreadPool::getPool(4))  );
+    "127.0.0.1", 6324, 128, 2, HTTPSettings
+  , &(ThreadPool::getPool(2))  );
   tws.run();
-  std::cout << "Input something to shutdown: ";
+  // std::cout << "Input something to shutdown: ";
+  tws.addTimerTask(TimerTask(true,1000, [](){
+    std::cout << "Input something to shutdown: " << std::endl;
+  })  );
   ::getchar();
   tws.shutdown();
   return 0;

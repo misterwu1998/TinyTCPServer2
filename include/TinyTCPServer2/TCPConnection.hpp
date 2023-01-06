@@ -83,7 +83,7 @@ public:
 
   /// @brief 由数据处理线程调用，从服务器撤除满足filter条件的定时任务
   /// @param filter 筛选条件，遇到符合条件的TimerTask作参数时返回true
-  /// @return 1表示成功；-1表示出错
+  /// @return 被移除的任务个数；或-1表示出错
   int removeTimerTask(std::function<bool (TimerTask const&)> filter);
 
 protected:

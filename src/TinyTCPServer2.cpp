@@ -56,6 +56,20 @@ int TinyTCPServer2::run(){
 
 }
 
+int TinyTCPServer2::addTimerTask(TimerTask const& t){
+  return netIOReactors[_roundRobin_timerTask%nNetIOReactors]->addTimerTask(t);
+}
+
+int TinyTCPServer2::removeTimerTask(std::function<bool (TimerTask const&)> filter){
+  int sum = 0;
+  for(auto& reactor : netIOReactors){
+    auto ret = reactor->removeTimerTask(filter);
+    if(0>ret) return -1;
+    sum += ret;
+  }
+  return sum;
+}
+
 int TinyTCPServer2::shutdown(){
   
   // 对于每个反应堆，告知不要再继续，然后唤醒

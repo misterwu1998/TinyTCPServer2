@@ -19,16 +19,22 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <functional>
 
 class TCPConnectionFactory;
 class TCPConnection;
 class ThreadPool;
 class Acceptor;
 class NetIOReactor;
+class TimerTask;
 
 class TinyTCPServer2
 {
+  uint32_t _roundRobin_timerTask;
+  
 public:
+
+  // 常量
 
   const char* ip;
   unsigned short port;
@@ -36,8 +42,6 @@ public:
   unsigned int nNetIOReactors;
   std::shared_ptr<TCPConnectionFactory> factory;
   ThreadPool* const tp;
-
-  // 常量
 
   std::shared_ptr<Acceptor> acceptor;
   std::vector<std::shared_ptr<NetIOReactor>> netIOReactors;
@@ -60,6 +64,17 @@ public:
   );
 
   int run();
+
+  /// @brief 添加一项“连接无关的”定时任务
+  /// @param t 不与任何特定的TCPConnection有关系的定时任务，不允许直接或间接地捕获任何特定的TCPConnection；对于不紧急的事项，允许在任务内把真正要完成的事情转交给线程池。
+  /// @return 1表示成功；-1表示出错
+  int addTimerTask(TimerTask const& t);
+
+  /// @brief 移除所有满足filter条件的“连接无关的”定时任务
+  /// @param filter 
+  /// @return 被移除的任务个数；或-1表示出错
+  int removeTimerTask(std::function<bool (TimerTask const&)> filter);
+
   int shutdown();
 
   ~TinyTCPServer2();
