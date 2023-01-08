@@ -18,6 +18,11 @@ public:
   std::shared_ptr<Buffer> body;//body可能是长度不定的chunk
   std::string filePath;//chunk数据如果很大，需要存放到磁盘，记住文件路径
 
+  HTTPRequest(){
+    // 默认设为0长body
+    set("Content-Length","0");
+  }
+
   HTTPRequest& set(http_method method){
     this->method = method;
     return *this;
