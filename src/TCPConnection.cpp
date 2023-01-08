@@ -45,7 +45,7 @@ int TCPConnection::readFromSocket(int length){
   }
 
   // 从内核读取，放进读缓冲
-  ret = ::recv(clientSocket,buf, LENGTH_PER_RECV, MSG_NOSIGNAL|MSG_DONTWAIT);
+  ret = ::recv(clientSocket,buf, LENGTH_PER_RECV, MSG_DONTWAIT);
   if(ret>0){//正常收取
     TTCPS2_LOGGER.trace(
       "TCPConnection::readFromSocket(): receive {0} bytes from client socket {1}.",
